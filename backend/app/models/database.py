@@ -89,6 +89,10 @@ class Mentor(BaseModel):
     achievements: Optional[list[str]] = None
     template_type: Optional[str] = None
     years_ahead: Optional[int] = None
+    # 灵感巅峰时刻相关字段
+    peak_age: Optional[int] = None  # 灵感巅峰年龄
+    peak_stage: Optional[str] = None  # 灵感巅峰阶段（如"称帝时刻"、"破产危机后"、"函谷关出关"等）
+    peak_description: Optional[str] = None  # 巅峰描述（对这个阶段更详细的说明）
 
     class Config:
         from_attributes = True

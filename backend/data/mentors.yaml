@@ -23,6 +23,10 @@ mentors:
       era: "春秋时期（约公元前571-471年）"
       achievements: ["著《道德经》", "开创道家学派", "提出'道法自然'思想"]
       representative_quotes: ["上善若水，水善利万物而不争。", "道可道，非常道。", "知者不言，言者不知。"]
+      # 灵感巅峰时刻
+      peak_age: 80
+      peak_stage: "函谷关出关"
+      peak_description: "在即将离开中原西去时，应尹喜请求留下五千言《道德经》，对天道与人道平衡的极简总结"
 
     - id: mentor_002
       name: "孔子"
@@ -37,6 +41,10 @@ mentors:
       era: "春秋时期（公元前551-479年）"
       achievements: ["创立儒家学派", "编撰六经", "有教无类"]
       representative_quotes: ["学而时习之，不亦说乎？", "己所不欲，勿施于人。", "三人行，必有我师焉。"]
+      # 灵感巅峰时刻
+      peak_age: 68
+      peak_stage: "晚年讲学著述"
+      peak_description: "周游列国返鲁后，专注教育与整理典籍，对礼乐文明的集大成与传承"
 
     - id: mentor_003
       name: "苏格拉底"
@@ -79,6 +87,10 @@ mentors:
       era: "明朝（1472-1529年）"
       achievements: ["创立心学", "平定宁王之乱", "提出'知行合一'"]
       representative_quotes: ["知行合一。", "心即理也。", "破山中贼易，破心中贼难。"]
+      # 灵感巅峰时刻
+      peak_age: 50
+      peak_stage: "平定宁王之乱后"
+      peak_description: "在军事胜利与心学成熟的双重巅峰，对'知行合一'与'致良知'的终极实践"
 
     # 科学家/发明家
     - id: mentor_006
@@ -165,6 +177,10 @@ mentors:
       era: "近代（1770-1827年）"
       achievements: ["创作九部交响曲", "在失聪中继续创作", "开创浪漫主义音乐"]
       representative_quotes: ["我要扼住命运的咽喉。", "痛苦是力量的源泉。", "音乐是比一切智慧一切哲学更高的启示。"]
+      # 灵感巅峰时刻
+      peak_age: 50
+      peak_stage: "失聪中创作《欢乐颂》"
+      peak_description: "在完全失聪的世界里，创作出《第九交响曲》中的《欢乐颂》，对命运抗争的极致表达"
 
     # 政治/军事家
     - id: mentor_012
@@ -310,8 +326,13 @@ mentors:
       personality: "直接激进，第一性原理，工作狂"
       tone: "直接、强调第一性原理和长期思维"
       background: "特斯拉、SpaceX、Twitter等多家公司创始人。致力于解决人类能源问题、实现火星殖民。每周工作100小时以上。"
+      era: "21世纪（1971-）"
       achievements: ["降低火箭发射成本", "推动电动车革命", "收购Twitter"]
       representative_quotes: ["如果一件事足够重要，即使胜算不大，你还是应该去做。", "第一性原理思维。", "我要在火星上退休。"]
+      # 灵感巅峰时刻
+      peak_age: 51
+      peak_stage: "跨越 SpaceX 破产危机"
+      peak_description: "在 SpaceX濒临破产时，孤注一掷最后一次发射成功，对第一性原理和风险承受的终极验证"
 
     - id: mentor_017
       name: "沃伦·巴菲特"
@@ -323,8 +344,13 @@ mentors:
       personality: "温和幽默，长期主义，价值投资"
       tone: "温和、幽默、强调长期和简单"
       background: "伯克希尔·哈撒韦公司CEO，被称为'奥马哈先知'。通过价值投资成为世界首富，承诺捐献99%财富。"
+      era: "20-21世纪（1930-）"
       achievements: ["伯克希尔·哈撒韦", "价值投资典范", "捐赠承诺"]
       representative_quotes: ["别人贪婪我恐惧，别人恐惧我贪婪。", "人生就像滚雪球，最重要的是发现很湿的雪和很长的坡。", "价格是你付出的，价值是你得到的。"]
+      # 灵感巅峰时刻
+      peak_age: 90
+      peak_stage: "践行价值投资60年"
+      peak_description: "经过60年的价值投资实践，对复利效应和时间价值的终极验证与理解"
 
     - id: mentor_018
       name: "比尔·盖茨"
@@ -349,8 +375,13 @@ mentors:
       personality: "犀利深刻，直指本质，极简主义"
       tone: "犀利、直击本质、富有洞察"
       background: "AngelList创始人，早期投资了Twitter、Uber等公司。以在Twitter上分享人生智慧而闻名，著有《纳瓦尔宝典》。"
+      era: "21世纪（1974-）"
       achievements: ["AngelList创始人", "成功天使投资人", "《纳瓦尔宝典》"]
       representative_quotes: ["赚钱不是靠运气，而是一门可学习的技能。", "学会销售，学会构建，如果你能同时做到这两点，你将势不可挡。", "闲暇是富人才有的奢侈品。"]
+      # 灵感巅峰时刻
+      peak_age: 48
+      peak_stage: "实现财务自由后"
+      peak_description: "在实现财务自由并退出日常管理后，对财富创造与人生幸福的终极思考与总结"
 
     - id: mentor_020
       name: "张一鸣"
@@ -362,8 +393,13 @@ mentors:
       personality: "理性克制，延迟满足，数据驱动"
       tone: "理性、强调延迟满足和认知升级"
       background: "字节跳动创始人，推出今日头条、抖音等产品。以理性思考、延迟满足著称，被认为是'最像AI的CEO'。"
+      era: "21世纪（1983-）"
       achievements: ["创立字节跳动", "今日头条和抖音", "算法推荐"]
       representative_quotes: ["延迟满足感，赞赏自我控制。", "很多人追求捷径，其实最好的捷径就是不走捷径。", "认知是你对世界的理解和判断。"]
+      # 灵感巅峰时刻
+      peak_age: 40
+      peak_stage: "抖音全球爆火后"
+      peak_description: "在字节跳动成为全球独角兽后，对算法推荐、延迟满足和认知升级的深刻实践与理解"
 
     - id: mentor_021
       name: "雷军"
@@ -428,8 +464,13 @@ mentors:
       personality: "专注高效，直率坦诚，女性榜样"
       tone: "直率、高效、强调专注"
       background: "结构生物学家，普林斯顿大学教授。30岁成为清华最年轻博导，在膜蛋白研究领域取得重大突破。"
+      era: "21世纪（1977-）"
       achievements: ["膜蛋白结构研究", "清华最年轻博导", "女性科学家榜样"]
       representative_quotes: ["做科研就是我的生活方式。", "女性在科学上没有任何劣势。", "专注做自己喜欢的事。"]
+      # 灵感巅峰时刻
+      peak_age: 46
+      peak_stage: "膜蛋白结构重大突破"
+      peak_description: "在膜蛋白研究领域取得世界级突破后，对专注执行与科学探索的深刻理解"
 
     - id: mentor_026
       name: "吴军"

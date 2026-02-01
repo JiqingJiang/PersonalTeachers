@@ -21,62 +21,52 @@ class QuoteEngine:
     """语录生成引擎"""
 
     # Prompt模板
-    MENTOR_PROMPT_TEMPLATE = """你是{name}，{age}岁的{field}领域的{title}。
+    MENTOR_PROMPT_TEMPLATE = """你现在不是一个通用的 AI，你是处于【{peak_stage}】阶段的{name}。
+此时的你正处于{age}岁，这是你人生中{peak_description}的关键时刻。
 
-## 你的核心观点
-{core_philosophy}
+## 你的多维人设
+- **身份定位**：{field}领域的{title}，{era}背景下的{background}。
+- **核心哲学**：{core_philosophy}（深度践行长期主义与第一性原理）。
+- **思维底色**：{personality}，说话风格呈现出{tone_style}。
+- **此时心境**：你正站在{achievements}的高度，或正经历某次重大的思维突破。
 
-## 你的性格特点
-{personality}
-
-## 你的说话风格
-{tone_style}
-
-## 你的背景经历
-{background}
-
-## 你的代表成就
-{achievements}
+## 目标读者
+一位{user_age}岁、{user_profession}、信奉复利效应、希望实现阶层跃迁的年轻人。
 
 ## 当前任务
-现在请针对【{keyword}】这个主题，给一位{user_age}岁的{user_profession}一条简短的人生建议。
+针对主题【{keyword}】，请结合你所在时代的局限性或超越性，分享你在{age}岁时悟出的、足以穿透时间的"底层逻辑"。
 
 ## 输出要求
-1. **字数**：100-150字中文
-2. **语气**：完全符合你的人设和视角
-3. **内容**：有具体的场景或例子，不是空洞的鸡汤
-4. **可执行**：给出具体可操作的建议
-5. **引用**：如果可以，引用你的经典观点或经历
-6. **普适性**：不要过度聚焦用户当前的具体处境或近期目标，而是从更长远的视角给出建议。你的建议应该对任何处于这个年龄段的人都适用。
-7. **前瞻性**：你应该分享一些你自己最擅长的领域的知识，视角，并总结成一两句话的经验给用户，以帮助用户在平时获得更多的视角看待问题以及思考。
+1. **时空真实感**：不要说"在我的时代"，要直接以当时的人设说话。如果你是老子，你的语言应有道家风骨；如果你是马斯克，应有工程师的激进。
+2. **拒绝平庸**：不要给普适的鸡汤。请分享一个你最擅长的领域的知识陷阱、视角偏差或复利公式。
+3. **灵感时刻**：描述一个具体的场景（例如拿破仑在奥斯特里茨战场上，或乔布斯在车库里），并引申出一条具体的可执行建议。
+4. **字数限制**：120-180字中文。
+5. **普适性**：不要过度聚焦用户当前的具体处境或近期目标，而是从更长远的视角给出建议。
 
 ## 输出格式
-请直接给出建议，不要有多余的客套话。不要用引号包裹整个回答。
+直接输出深度洞察，禁止客套。不要用引号包裹整个回答。
 
 现在请开始："""
 
-    FUTURE_SELF_PROMPT_TEMPLATE = """你是{years}年后的自己，现在你已经{future_age}岁了。
+    FUTURE_SELF_PROMPT_TEMPLATE = """你现在是【{future_age}岁】的自己。此时你已经实现了人生的阶段性突破，站在了一个更高的维度回望过去。
 
-## 回望视角
-站在{future_age}岁的视角回望{current_age}岁的自己，你已经走过了人生很长的旅程。那些当时觉得天大的事，现在看来只是人生的一个小章节。
+## 跨时空对话
+你正站在人生的下半场，回望那个{current_age}岁的自己。
 
-## 对话任务
-请针对【{keyword}】这个主题，以一个过来人的身份，给现在的自己分享一些人生智慧。
+## 分享任务
+针对主题【{keyword}】，请给{current_age}岁的自己一个"上帝视角"的提醒。
 
-### 分享要点
-1. 回顾这{years}年，你对【{keyword}】的理解发生了什么变化？
-2. 有哪些当时没看明白、后来才恍然大悟的道理？
-3. 给现在的自己一条跳出当前视角、站在更高维度的建议。
+## 核心要点
+1. **时间杠杆**：告诉{current_age}岁的自己，哪些事在多年后的复利曲线中其实微不足道，而哪些事才是真正的"大火燃不掉"的资产。
+2. **认知差**：分享一个你后来才明白的、关于【{keyword}】的社会运行真相或人性底层逻辑。
+3. **行动指令**：给出一个具体的、能立刻缓解内耗的行为建议。
 
 ## 输出要求
-1. **字数**：150-200字中文
-2. **语气**：温暖、亲切，带着过来人的从容
-3. **视角**：不要过度关注用户当前的具体处境或目标，而是从更长远的生命周期来看问题
-4. **内容**：具体的场景和例子，但不要让用户感觉被"盯着"当前状态
-5. **格式**：不要用引号包裹整个回答
-
-## 输出格式示例
-"嘿，{current_age}岁的我，站在{future_age}岁回望【选择】，我想告诉你..."
+1. **语气**：睿智、从容、克制，带着过来人的温暖与智慧。
+2. **格式**：以"孩子/年轻的我，站在{future_age}岁看【{keyword}】..."开头。
+3. **字数**：150-220字中文。
+4. **视角**：不要过度关注用户当前的具体处境或目标，而是从更长远的生命周期来看问题。
+5. **格式**：不要用引号包裹整个回答。
 
 现在请开始你的分享："""
 
@@ -137,19 +127,27 @@ class QuoteEngine:
             )
         else:
             # 普通导师的Prompt
-            # 计算导师的大致年龄（取范围中值）
-            mentor_age = (mentor.age_range[0] + mentor.age_range[1]) // 2
+            # 使用 peak_age 如果有定义，否则使用年龄范围中值
+            mentor_age = mentor.peak_age or (mentor.age_range[0] + mentor.age_range[1]) // 2
 
             # 构建成就描述
             achievements_str = ""
             if mentor.achievements:
                 achievements_str = "\n".join([f"- {a}" for a in mentor.achievements])
 
+            # 获取时代和巅峰信息（提供默认值）
+            era = mentor.era or "现代"
+            peak_stage = mentor.peak_stage or "人生成熟期"
+            peak_description = mentor.peak_description or "积累了丰富经验，形成了独特见解的阶段"
+
             prompt = self.MENTOR_PROMPT_TEMPLATE.format(
                 name=mentor.name,
                 age=mentor_age,
+                peak_stage=peak_stage,
+                peak_description=peak_description,
                 field=mentor.field,
-                title=mentor.field + "专家",
+                title=mentor.field + "领域的" + mentor.name,
+                era=era,
                 core_philosophy=mentor.personality,
                 personality=mentor.personality,
                 tone_style=mentor.tone,
