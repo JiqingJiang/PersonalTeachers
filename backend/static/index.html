@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PersonalTeachers - 人生导师每日推送系统</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .nav-link { transition: all 0.2s; }
+        .nav-link:hover { transform: translateY(-2px); }
+        .nav-link.active { border-bottom: 2px solid white; }
+    </style>
+</head>
+<body>
+    <div x-data="app()" class="min-h-screen">
+        <!-- 导航栏 -->
+        <nav class="bg-white/10 backdrop-blur-md border-b border-white/20">
+            <div class="max-w-6xl mx-auto px-4">
+                <div class="flex items-center justify-between h-16">
+                    <div class="flex items-center space-x-2">
+                        <span class="text-2xl">📚</span>
+                        <span class="text-white font-bold text-xl">PersonalTeachers</span>
+                    </div>
+                    <div class="flex items-center space-x-6">
+                        <a href="/" class="nav-link text-white/80 hover:text-white px-3 py-2 text-sm font-medium" :class="{'active': currentPage === 'home'}">🏠 首页</a>
+                        <a href="/preferences.html" class="nav-link text-white/80 hover:text-white px-3 py-2 text-sm font-medium" :class="{'active': currentPage === 'preferences'}">⚙️ 偏好设置</a>
+                        <a href="/history.html" class="nav-link text-white/80 hover:text-white px-3 py-2 text-sm font-medium" :class="{'active': currentPage === 'history'}">📚 历史语录</a>
+                        <a href="/docs" target="_blank" class="nav-link text-white/80 hover:text-white px-3 py-2 text-sm font-medium">📖 API文档</a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 主内容 -->
+        <div class="max-w-6xl mx-auto px-4 py-12">
+            <!-- Hero Section -->
+            <div class="text-center mb-12">
+                <h1 class="text-5xl md:text-6xl font-bold text-white mb-6">
+                    人生导师每日推送系统
+                </h1>
+                <p class="text-xl text-white/80 max-w-2xl mx-auto">
+                    通过多元化虚拟导师的每日智慧推送，建立360度认知体系
+                </p>
+                <div class="mt-8 flex justify-center items-center space-x-4">
+                    <span class="text-white/60">🎭 <span x-text="systemInfo.total_mentors">50</span>位导师</span>
+                    <span class="text-white/60">•</span>
+                    <span class="text-white/60">🎯 <span x-text="systemInfo.total_keywords">60</span>个关键词</span>
+                    <span class="text-white/60">•</span>
+                    <span class="text-white/60">🤖 AI生成</span>
+                </div>
+            </div>
+
+            <!-- 数据卡片 -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+                <div class="bg-white/10 backdrop-blur-md rounded-xl p-6 text-center border border-white/20">
+                    <div class="text-4xl font-bold text-white mb-2" x-text="stats.total_quotes">-</div>
+                    <div class="text-white/70 text-sm">总语录数</div>
+                </div>
+                <div class="bg-white/10 backdrop-blur-md rounded-xl p-6 text-center border border-white/20">
+                    <div class="text-4xl font-bold text-white mb-2" x-text="stats.quotes_this_week">-</div>
+                    <div class="text-white/70 text-sm">本周新增</div>
+                </div>
+                <div class="bg-white/10 backdrop-blur-md rounded-xl p-6 text-center border border-white/20">
+                    <div class="text-4xl font-bold text-white mb-2" x-text="systemInfo.total_mentors">50</div>
+                    <div class="text-white/70 text-sm">位导师</div>
+                </div>
+                <div class="bg-white/10 backdrop-blur-md rounded-xl p-6 text-center border border-white/20">
+                    <div class="text-4xl font-bold text-white mb-2" x-text="systemInfo.total_keywords">60</div>
+                    <div class="text-white/70 text-sm">个关键词</div>
+                </div>
+            </div>
+
+            <!-- 快捷操作 -->
+            <div class="bg-white rounded-2xl shadow-2xl overflow-hidden">
+                <div class="bg-gradient-to-r from-purple-600 to-indigo-600 px-8 py-6">
+                    <h2 class="text-2xl font-bold text-white">快捷操作</h2>
+                    <p class="text-white/80 mt-1">一键生成语录或发送测试邮件</p>
+                </div>
+                <div class="p-8">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <button @click="generateQuotes()"
+                                :disabled="loading.generate"
+                                class="group relative overflow-hidden bg-purple-600 hover:bg-purple-700 text-white px-8 py-4 rounded-xl font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <span class="relative z-10 flex items-center justify-center">
+                                <span x-show="!loading.generate" class="mr-2">🎲</span>
+                                <span x-show="loading.generate">生成中...</span>
+                                <span x-show="!loading.generate">立即生成语录</span>
+                            </span>
+                            <div class="absolute inset-0 bg-white/20 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-500"></div>
+                        </button>
+
+                        <button @click="sendTestEmail()"
+                                :disabled="loading.email"
+                                class="group relative overflow-hidden bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-4 rounded-xl font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <span class="relative z-10 flex items-center justify-center">
+                                <span x-show="!loading.email" class="mr-2">📧</span>
+                                <span x-show="loading.email">发送中...</span>
+                                <span x-show="!loading.email">发送测试邮件</span>
+                            </span>
+                            <div class="absolute inset-0 bg-white/20 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-500"></div>
+                        </button>
+                    </div>
+
+                    <!-- 最近生成的语录 -->
+                    <div x-show="recentQuotes.length > 0" class="mt-8">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4">最近生成</h3>
+                        <div class="space-y-3">
+                            <template x-for="quote in recentQuotes.slice(0, 3)">
+                                <div class="p-4 bg-gray-50 rounded-lg border-l-4 border-purple-500">
+                                    <div class="text-sm text-gray-500 mb-1">
+                                        <span>【<span x-text="quote.keyword"></span>】</span>
+                                        <span class="ml-2" x-text="quote.mentor_name"></span>
+                                    </div>
+                                    <div class="text-gray-700 text-sm" x-text="quote.content.substring(0, 100) + '...'"></div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 导师池预览 -->
+            <div class="mt-8 bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20">
+                <h2 class="text-2xl font-bold text-white mb-6">导师池预览</h2>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <template x-for="(count, name) in systemInfo.mentor_categories">
+                        <div class="bg-white/10 rounded-lg p-4 text-center">
+                            <div class="text-3xl mb-2" x-text="getCategoryEmoji(name)"></div>
+                            <div class="text-white font-medium" x-text="getCategoryName(name)"></div>
+                            <div class="text-white/60 text-sm" x-text="count + '位'"></div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        <!-- 底部 -->
+        <div class="text-center py-8 text-white/40 text-sm">
+            <p>— Powered by PersonalTeachers —</p>
+        </div>
+    </div>
+
+    <script>
+        function app() {
+            return {
+                currentPage: 'home',
+                stats: { total_quotes: 0, quotes_this_week: 0 },
+                systemInfo: {
+                    total_mentors: 50,
+                    total_keywords: 60,
+                    mentor_categories: {
+                        historical: 15,
+                        modern: 20,
+                        common: 10,
+                        future_self: 5
+                    }
+                },
+                loading: { generate: false, email: false },
+                recentQuotes: [],
+
+                // 类别名称映射
+                categoryNames: {
+                    historical: '历史人物',
+                    modern: '现代人物',
+                    common: '普通百姓',
+                    future_self: '未来自己'
+                },
+
+                // 类别表情映射
+                categoryEmojis: {
+                    historical: '📜',
+                    modern: '💼',
+                    common: '👷',
+                    future_self: '⏩'
+                },
+
+                async init() {
+                    await this.loadSystemInfo();
+                    await this.loadStats();
+                },
+
+                async loadSystemInfo() {
+                    try {
+                        const response = await fetch('/api/system-info');
+                        this.systemInfo = await response.json();
+                    } catch (error) {
+                        console.error('Failed to load system info:', error);
+                    }
+                },
+
+                async loadStats() {
+                    try {
+                        const response = await fetch('/api/stats');
+                        this.stats = await response.json();
+                    } catch (error) {
+                        console.error('Failed to load stats:', error);
+                    }
+                },
+
+                getCategoryName(key) {
+                    return this.categoryNames[key] || key;
+                },
+
+                getCategoryEmoji(key) {
+                    return this.categoryEmojis[key] || '👤';
+                },
+
+                async generateQuotes() {
+                    this.loading.generate = true;
+                    try {
+                        const response = await fetch('/api/quotes/generate', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ count: 3 })
+                        });
+
+                        if (response.ok) {
+                            this.recentQuotes = await response.json();
+                            await this.loadStats();
+                        }
+                    } catch (error) {
+                        alert('生成失败：' + error.message);
+                    } finally {
+                        this.loading.generate = false;
+                    }
+                },
+
+                async sendTestEmail() {
+                    this.loading.email = true;
+                    try {
+                        const response = await fetch('/api/email/test', {
+                            method: 'POST'
+                        });
+
+                        const result = await response.json();
+                        alert(result.message || '发送成功！');
+                    } catch (error) {
+                        alert('发送失败：' + error.message);
+                    } finally {
+                        this.loading.email = false;
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>
