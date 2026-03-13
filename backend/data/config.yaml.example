@@ -1,0 +1,107 @@
+advanced:
+  concurrent_generation: 3
+  request_timeout: 30
+  save_raw_responses: false
+  verbose_logging: false
+ai_model:
+  fallback_order:
+  - glm
+  - deepseek
+  - gemini
+  - minimax
+  primary: glm
+delivery:
+  enabled: true
+  time: 08:20
+  timezone: Asia/Shanghai
+experimental:
+  auto_quality_scoring: false
+  feedback_collection: true
+  recommendation_algorithm: false
+generation:
+  age_diversity: true
+  deduplication:
+    days: 7
+    enabled: true
+  max_length: 100
+  min_length: 30
+  quality:
+    max_retries: 3
+    min_quality_score: 3.0
+  quote_count: 10
+keyword_weights:
+  专注: 1
+  习惯: 4.9
+  伴侣: 1
+  信仰: 2.6
+  信任: 1
+  债务: 1
+  健康: 1
+  公平: 1
+  创造: 1
+  原谅: 1
+  告别: 1
+  命运: 4.1
+  和解: 2.5
+  因果: 3.8
+  复利: 1
+  天赋: 1.1
+  失败: 4.3
+  嫉妒: 1
+  孤独: 1
+  学习: 1
+  孩子: 1
+  安全感: 1
+  尊重: 1
+  归属感: 1
+  性: 0
+  情绪: 1
+  意义: 2.5
+  房子: 1
+  执行: 4.3
+  改变: 1
+  无常: 3.2
+  时间: 1
+  朋友: 1
+  权力: 1
+  欲望: 2.5
+  死亡: 1
+  焦虑: 1
+  爱: 1
+  父母: 1
+  生存: 1
+  真理: 1.9
+  睡眠: 1
+  竞争: 1
+  耐心: 4.6
+  自我: 1
+  自由: 3.2
+  衰老: 1
+  认知: 5
+  责任: 1
+  贫穷: 1
+  资产: 1
+  选择: 4.7
+  逻辑: 1
+  遗忘: 1
+  遗憾: 1
+  金钱: 1
+  阶层: 1
+  面子: 1
+  风险: 1
+  食物: 0.3
+mentor_preferences:
+  common: 0.1
+  future_self: 0.2
+  historical: 0.3
+  modern: 0.4
+user:
+  age: 24
+  bio: 正在探索人生智慧的路上
+  current_state:
+    confusion: 职业方向的抉择，国企和私企业之间的成长性，稳定性，收入之间的取舍；去发达的省份还是去一般的二线三线城市的取舍
+    expectation: 掌握周易的自然规律，自然万物的法制，在身体健康，生活有保障的前提下，更多的尝试，积累，复利
+    status: 真正全身心为秋招做准备；不断学习提升自己的认知；不断思考人生、未来、婚姻家庭、修行、健康、看未来的机会
+  email: your-email@example.com
+  name: 您的名字
+  profession: 您的职业

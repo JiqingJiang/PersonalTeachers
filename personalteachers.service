@@ -1,0 +1,24 @@
+[Unit]
+Description=PersonalTeachers - Life Wisdom Daily Delivery System
+After=network.target
+
+[Service]
+Type=simple
+User=jiqing
+WorkingDirectory=/home/jiqing/PersonalTeachers/backend
+Environment="PATH=/home/jiqing/.local/bin:/usr/bin:/bin"
+ExecStart=/usr/bin/python3 /home/jiqing/PersonalTeachers/backend/run.py
+Restart=always
+RestartSec=10
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=personalteachers
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

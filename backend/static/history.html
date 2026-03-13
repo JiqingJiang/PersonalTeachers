@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>历史语录 - PersonalTeachers</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+        .nav-link { transition: all 0.2s; }
+        .nav-link:hover { transform: translateY(-2px); }
+        .nav-link.active { border-bottom: 2px solid white; }
+        .quote-card { transition: all 0.3s ease; }
+        .quote-card:hover { transform: translateY(-4px); box-shadow: 0 12px 24px rgba(0,0,0,0.15); }
+        .tag { transition: all 0.2s; }
+        .tag:hover { transform: scale(1.05); }
+    </style>
+</head>
+<body>
+    <div x-data="historyApp()" class="min-h-screen pb-20">
+        <!-- 导航栏 -->
+        <nav class="bg-white/10 backdrop-blur-md border-b border-white/20 sticky top-0 z-40">
+            <div class="max-w-6xl mx-auto px-4">
+                <div class="flex items-center justify-between h-16">
+                    <div class="flex items-center space-x-2">
+                        <span class="text-2xl">📚</span>
+                        <span class="text-white font-bold text-xl">PersonalTeachers</span>
+                    </div>
+                    <div class="flex items-center space-x-6">
+                        <a href="/" class="nav-link text-white/80 hover:text-white px-3 py-2 text-sm font-medium">🏠 首页</a>
+                        <a href="/preferences.html" class="nav-link text-white/80 hover:text-white px-3 py-2 text-sm font-medium">⚙️ 偏好设置</a>
+                        <a href="/history.html" class="nav-link text-white/80 hover:text-white px-3 py-2 text-sm font-medium active">📚 历史语录</a>
+                        <a href="/docs" target="_blank" class="nav-link text-white/80 hover:text-white px-3 py-2 text-sm font-medium">📖 API文档</a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 主内容 -->
+        <div class="max-w-6xl mx-auto px-4 py-8">
+            <!-- 页面标题 -->
+            <div class="text-center mb-8">
+                <h1 class="text-4xl md:text-5xl font-bold text-white mb-4">📚 历史语录</h1>
+                <p class="text-xl text-white/80">浏览所有导师的智慧结晶</p>
+            </div>
+
+            <!-- 搜索和筛选 -->
+            <div class="bg-white rounded-2xl shadow-2xl p-6 mb-8">
+                <!-- 搜索框 -->
+                <div class="mb-6">
+                    <div class="relative">
+                        <input type="text" x-model="searchQuery" @input="debouncedSearch()"
+                               placeholder="搜索语录内容、导师姓名或关键词..."
+                               class="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                        <span class="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400">🔍</span>
+                        <span x-show="searchQuery" @click="searchQuery = ''; loadQuotes()"
+                              class="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer">✕</span>
+                    </div>
+                </div>
+
+                <!-- 筛选器 -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <!-- 关键词筛选 -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">关键词</label>
+                        <select x-model="filters.keyword" @change="loadQuotes()"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                            <option value="">全部</option>
+                            <template x-for="kw in allKeywords" :key="kw">
+                                <option :value="kw" x-text="kw"></option>
+                            </template>
+                        </select>
+                    </div>
+
+                    <!-- 导师筛选 -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">导师</label>
+                        <select x-model="filters.mentor" @change="loadQuotes()"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                            <option value="">全部</option>
+                            <template x-for="mentor in allMentors" :key="mentor.id">
+                                <option :value="mentor.name" x-text="mentor.name"></option>
+                            </template>
+                        </select>
+                    </div>
+
+                    <!-- 日期筛选 -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">日期</label>
+                        <input type="date" x-model="filters.date" @change="loadQuotes()"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                    </div>
+
+                    <!-- 排序 -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">排序</label>
+                        <select x-model="sortBy" @change="loadQuotes()"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                            <option value="date_desc">最新优先</option>
+                            <option value="date_asc">最旧优先</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 活跃筛选标签 -->
+                <div x-show="hasActiveFilters" class="mt-4 flex flex-wrap gap-2">
+                    <span class="text-sm text-gray-500">活跃筛选：</span>
+                    <template x-for="(value, key) in activeFilters" :key="key">
+                        <span @click="clearFilter(key)"
+                              class="tag px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm cursor-pointer flex items-center space-x-1">
+                            <span x-text="key + ': ' + value"></span>
+                            <span>✕</span>
+                        </span>
+                    </template>
+                    <button @click="clearAllFilters()" class="text-sm text-red-600 hover:text-red-800">清除全部</button>
+                </div>
+
+                <!-- 统计信息 -->
+                <div class="mt-4 pt-4 border-t border-gray-200">
+                    <span class="text-sm text-gray-600">
+                        找到 <span class="font-bold text-purple-600" x-text="totalQuotes"></span> 条语录
+                        <span x-show="loading.search" class="ml-2">搜索中...</span>
+                    </span>
+                </div>
+            </div>
+
+            <!-- 语录列表 -->
+            <div class="space-y-4">
+                <!-- 加载状态 -->
+                <div x-show="loading.initial" class="text-center py-12">
+                    <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+                    <p class="mt-4 text-white">加载中...</p>
+                </div>
+
+                <!-- 空状态 -->
+                <div x-show="!loading.initial && quotes.length === 0" class="text-center py-12 bg-white/10 backdrop-blur-md rounded-2xl">
+                    <span class="text-6xl">📭</span>
+                    <p class="mt-4 text-white text-lg">暂无语录</p>
+                    <p class="text-white/60">尝试调整筛选条件或<a href="/" class="underline hover:text-white">生成新的语录</a></p>
+                </div>
+
+                <!-- 语录卡片 -->
+                <template x-for="quote in quotes" :key="quote.id">
+                    <div class="quote-card bg-white rounded-2xl shadow-lg overflow-hidden">
+                        <div class="p-6">
+                            <!-- 元信息 -->
+                            <div class="flex flex-wrap items-center gap-3 mb-4">
+                                <span class="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">
+                                    【<span x-text="quote.keyword"></span>】
+                                </span>
+                                <span class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium" x-text="quote.mentor_name"></span>
+                                <span class="text-sm text-gray-400" x-text="formatDate(quote.created_at)"></span>
+                            </div>
+
+                            <!-- 语录内容 -->
+                            <div class="text-gray-700 text-lg leading-relaxed mb-4" x-text="quote.content"></div>
+
+                            <!-- 操作按钮 -->
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-4">
+                                    <button @click="copyQuote(quote)" class="text-gray-400 hover:text-purple-600 transition-colors">
+                                        📋 复制
+                                    </button>
+                                    <button @click="shareQuote(quote)" class="text-gray-400 hover:text-purple-600 transition-colors">
+                                        🔗 分享
+                                    </button>
+                                </div>
+                                <span class="text-sm text-gray-400">
+                                    AI: <span x-text="quote.ai_model || 'glm'"></span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <!-- 分页 -->
+            <div x-show="totalPages > 1" class="mt-8 flex justify-center items-center space-x-2">
+                <button @click="goToPage(currentPage - 1)" :disabled="currentPage === 1"
+                        class="px-4 py-2 bg-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50">
+                    上一页
+                </button>
+                <template x-for="page in visiblePages" :key="page">
+                    <button @click="goToPage(page)"
+                            :class="page === currentPage ? 'bg-purple-600 text-white' : 'bg-white hover:bg-gray-50'"
+                            class="w-10 h-10 rounded-lg font-medium"
+                            x-text="page">
+                    </button>
+                </template>
+                <button @click="goToPage(currentPage + 1)" :disabled="currentPage === totalPages"
+                        class="px-4 py-2 bg-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50">
+                    下一页
+                </button>
+            </div>
+
+            <!-- 回到顶部 -->
+            <button x-show="showScrollTop" @click="scrollToTop()"
+                    class="fixed bottom-8 right-8 w-12 h-12 bg-purple-600 text-white rounded-full shadow-lg hover:bg-purple-700 transition-all flex items-center justify-center">
+                ⬆️
+            </button>
+        </div>
+
+        <!-- 复制成功提示 -->
+        <div x-show="toast.show" x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 transform translate-y-2"
+             x-transition:enter-end="opacity-100 transform translate-y-0"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="opacity-100 transform translate-y-0"
+             x-transition:leave-end="opacity-0 transform translate-y-2"
+             class="fixed bottom-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-6 py-3 rounded-lg shadow-lg">
+            <span x-text="toast.message"></span>
+        </div>
+    </div>
+
+    <script>
+        function historyApp() {
+            return {
+                quotes: [],
+                allKeywords: [],
+                allMentors: [],
+                searchQuery: '',
+                filters: { keyword: '', mentor: '', date: '' },
+                sortBy: 'date_desc',
+                currentPage: 1,
+                pageSize: 10,
+                totalQuotes: 0,
+                totalPages: 0,
+                loading: { initial: true, search: false },
+                showScrollTop: false,
+                searchTimeout: null,
+                toast: { show: false, message: '' },
+
+                get hasActiveFilters() {
+                    return this.filters.keyword || this.filters.mentor || this.filters.date || this.searchQuery;
+                },
+
+                get activeFilters() {
+                    const result = {};
+                    if (this.filters.keyword) result['关键词'] = this.filters.keyword;
+                    if (this.filters.mentor) result['导师'] = this.filters.mentor;
+                    if (this.filters.date) result['日期'] = this.filters.date;
+                    if (this.searchQuery) result['搜索'] = this.searchQuery;
+                    return result;
+                },
+
+                get visiblePages() {
+                    const pages = [];
+                    const start = Math.max(1, this.currentPage - 2);
+                    const end = Math.min(this.totalPages, this.currentPage + 2);
+                    for (let i = start; i <= end; i++) pages.push(i);
+                    return pages;
+                },
+
+                async init() {
+                    await this.loadKeywords();
+                    await this.loadMentors();
+                    await this.loadQuotes();
+                    window.addEventListener('scroll', () => {
+                        this.showScrollTop = window.pageYOffset > 300;
+                    });
+                },
+
+                async loadKeywords() {
+                    try {
+                        const response = await fetch('/api/keywords');
+                        if (response.ok) {
+                            const data = await response.json();
+                            this.allKeywords = [
+                                ...(data.quadrant_1_foundation?.map(k => k.name) || []),
+                                ...(data.quadrant_2_connection?.map(k => k.name) || []),
+                                ...(data.quadrant_3_growth?.map(k => k.name) || []),
+                                ...(data.quadrant_4_ultimate?.map(k => k.name) || [])
+                            ];
+                        }
+                    } catch (error) {
+                        console.error('Failed to load keywords:', error);
+                    }
+                },
+
+                async loadMentors() {
+                    try {
+                        const response = await fetch('/api/mentors');
+                        if (response.ok) {
+                            const data = await response.json();
+                            this.allMentors = data.mentors || [];
+                        }
+                    } catch (error) {
+                        console.error('Failed to load mentors:', error);
+                    }
+                },
+
+                async loadQuotes() {
+                    this.loading.initial = true;
+                    try {
+                        const params = new URLSearchParams({
+                            page: this.currentPage,
+                            page_size: this.pageSize,
+                            sort_by: this.sortBy
+                        });
+                        if (this.filters.keyword) params.append('keyword', this.filters.keyword);
+                        if (this.filters.mentor) params.append('mentor', this.filters.mentor);
+                        if (this.filters.date) params.append('date', this.filters.date);
+                        if (this.searchQuery) params.append('search', this.searchQuery);
+
+                        const response = await fetch(`/api/quotes/history?${params}`);
+                        if (response.ok) {
+                            const data = await response.json();
+                            this.quotes = data.quotes || [];
+                            this.totalQuotes = data.total || 0;
+                            this.totalPages = Math.ceil(this.totalQuotes / this.pageSize);
+                        }
+                    } catch (error) {
+                        console.error('Failed to load quotes:', error);
+                    } finally {
+                        this.loading.initial = false;
+                    }
+                },
+
+                debouncedSearch() {
+                    clearTimeout(this.searchTimeout);
+                    this.searchTimeout = setTimeout(() => {
+                        this.currentPage = 1;
+                        this.loadQuotes();
+                    }, 500);
+                },
+
+                goToPage(page) {
+                    if (page >= 1 && page <= this.totalPages) {
+                        this.currentPage = page;
+                        this.loadQuotes();
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
+                },
+
+                clearFilter(key) {
+                    if (key === '关键词') this.filters.keyword = '';
+                    if (key === '导师') this.filters.mentor = '';
+                    if (key === '日期') this.filters.date = '';
+                    if (key === '搜索') this.searchQuery = '';
+                    this.currentPage = 1;
+                    this.loadQuotes();
+                },
+
+                clearAllFilters() {
+                    this.filters = { keyword: '', mentor: '', date: '' };
+                    this.searchQuery = '';
+                    this.currentPage = 1;
+                    this.loadQuotes();
+                },
+
+                copyQuote(quote) {
+                    const text = `【${quote.keyword}】${quote.mentor_name}：${quote.content}`;
+                    navigator.clipboard.writeText(text).then(() => {
+                        this.showToast('✅ 已复制到剪贴板');
+                    });
+                },
+
+                shareQuote(quote) {
+                    const url = `${window.location.origin}${window.location.pathname}?id=${quote.id}`;
+                    navigator.clipboard.writeText(url).then(() => {
+                        this.showToast('🔗 链接已复制');
+                    });
+                },
+
+                showToast(message) {
+                    this.toast = { show: true, message };
+                    setTimeout(() => { this.toast.show = false; }, 2000);
+                },
+
+                formatDate(dateStr) {
+                    const date = new Date(dateStr);
+                    return date.toLocaleString('zh-CN', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                },
+
+                scrollToTop() {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            };
+        }
+    </script>
+</body>
+</html>

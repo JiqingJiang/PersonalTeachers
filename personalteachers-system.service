@@ -1,0 +1,34 @@
+[Unit]
+Description=PersonalTeachers - Life Wisdom Daily Delivery System
+After=network.target
+
+[Service]
+Type=simple
+User=jiqing
+Group=jiqing
+WorkingDirectory=/home/jiqing/PersonalTeachers/backend
+Environment="PATH=/home/jiqing/.local/bin:/usr/bin:/bin"
+Environment="PYTHONUNBUFFERED=1"
+ExecStart=/usr/bin/python3 /home/jiqing/PersonalTeachers/backend/run.py
+Restart=always
+RestartSec=10
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=personalteachers
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+
+# Important: Keep service running after logout
+KillMode=process
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+# Ensure service stays alive after logout
+RemainAfterExit=no
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tree:*)",
+      "Bash(python3:*)",
+      "Bash(./venv/bin/pip:*)",
+      "Bash(chmod:*)",
+      "Bash(source:*)",
+      "Bash(python:*)",
+      "Bash(lsof:*)",
+      "Bash(curl:*)",
+      "Bash(journalctl:*)",
+      "Bash(systemctl:*)",
+      "Bash(ufw status:*)",
+      "Bash(iptables:*)",
+      "Bash(sqlite3:*)"
+    ]
+  }
+}

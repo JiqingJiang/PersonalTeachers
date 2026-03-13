@@ -1,0 +1,524 @@
+# ============================================
+# PersonalTeachers - 60个关键词定义
+# ============================================
+# 四个象限，每个象限15个关键词
+# 人类智慧的360度全景
+
+keywords:
+  # ============================================
+  # 🟢 第一象限：生存与根基 (The Foundation)
+  # 属性：刚需、物理、客观、底层逻辑
+  # 视角：【底层】普通百姓、生物学视角
+  # 核心问题：我如何活下去？
+  # ============================================
+  quadrant_1_foundation:
+    - name: "健康"
+      english: "Health"
+      category: "physical"
+      default_weight: 2.0
+      description: "所有的0前面那个1"
+      mentors_preferred: ["心理医生", "养生专家", "生物学家", "运动员"]
+      related_keywords: ["睡眠", "食物", "衰老"]
+
+    - name: "金钱"
+      english: "Money"
+      category: "resource"
+      default_weight: 1.5
+      description: "资源交换的媒介，生存的底气"
+      mentors_preferred: ["巴菲特", "普通打工者", "经济学家", "房产中介"]
+      related_keywords: ["资产", "债务", "贫穷"]
+
+    - name: "时间"
+      english: "Time"
+      category: "resource"
+      default_weight: 1.8
+      description: "唯一不可再生的资源，最为公平"
+      mentors_preferred: ["时间管理专家", "企业家", "哲学家", "普通人"]
+      related_keywords: ["衰老", "选择", "习惯"]
+
+    - name: "睡眠"
+      english: "Sleep"
+      category: "physical"
+      default_weight: 1.5
+      description: "系统的重启与修复机制"
+      mentors_preferred: ["心理医生", "睡眠专家", "生物学家", "普通失眠者"]
+      related_keywords: ["健康", "情绪", "压力"]
+
+    - name: "房子"
+      english: "Housing"
+      category: "resource"
+      default_weight: 1.0
+      description: "物理空间的庇护，中国社会的特殊图腾"
+      mentors_preferred: ["房产中介", "普通人", "经济学家", "建筑师"]
+      related_keywords: ["金钱", "资产", "安全感"]
+
+    - name: "欲望"
+      english: "Desire"
+      category: "psychological"
+      default_weight: 1.2
+      description: "驱动力的源头，也是痛苦的根源"
+      mentors_preferred: ["哲学家", "心理学家", "宗教人士", "苦行僧"]
+      related_keywords: ["情绪", "自由", "自我"]
+
+    - name: "性"
+      english: "Sex"
+      category: "physical"
+      default_weight: 1.0
+      description: "繁衍本能与亲密关系的物理连接"
+      mentors_preferred: ["心理学家", "生物学家", "性教育专家", "普通夫妻"]
+      related_keywords: ["伴侣", "爱", "健康"]
+
+    - name: "衰老"
+      english: "Aging"
+      category: "biological"
+      default_weight: 1.3
+      description: "熵增的必然过程"
+      mentors_preferred: ["老年医学专家", "退休老人", "生物学家", "哲学家"]
+      related_keywords: ["健康", "时间", "死亡"]
+
+    - name: "风险"
+      english: "Risk"
+      category: "uncertainty"
+      default_weight: 1.4
+      description: "不确定性的量化，跃迁的代价"
+      mentors_preferred: ["投资家", "企业家", "保险专家", "赌徒"]
+      related_keywords: ["选择", "金钱", "生存"]
+
+    - name: "安全感"
+      english: "Security"
+      category: "psychological"
+      default_weight: 1.6
+      description: "对确定性的渴望"
+      mentors_preferred: ["心理学家", "焦虑症患者", "斯多葛哲学家", "普通人"]
+      related_keywords: ["风险", "房子", "金钱"]
+
+    - name: "债务"
+      english: "Debt"
+      category: "financial"
+      default_weight: 1.0
+      description: "透支未来以换取现在的杠杆"
+      mentors_preferred: ["投资家", "负债者", "经济学家", "破产者"]
+      related_keywords: ["金钱", "风险", "贫穷"]
+
+    - name: "食物"
+      english: "Food"
+      category: "physical"
+      default_weight: 1.0
+      description: "能量输入"
+      mentors_preferred: ["营养师", "厨师", "农民", "减肥达人"]
+      related_keywords: ["健康", "欲望", "习惯"]
+
+    - name: "贫穷"
+      english: "Poverty"
+      category: "economic"
+      default_weight: 1.5
+      description: "稀缺心态的根源，限制带宽的枷锁"
+      mentors_preferred: ["经济学家", "普通打工者", "慈善家", "脱贫者"]
+      related_keywords: ["金钱", "生存", "阶层"]
+
+    - name: "生存"
+      english: "Survival"
+      category: "fundamental"
+      default_weight: 1.8
+      description: "一切文明的前提"
+      mentors_preferred: ["野外生存专家", "难民", "动物学家", "底层百姓"]
+      related_keywords: ["健康", "风险", "资源"]
+
+    - name: "资产"
+      english: "Assets"
+      category: "financial"
+      default_weight: 1.2
+      description: "睡后能产生价值的东西（复利的基础）"
+      mentors_preferred: ["投资家", "企业家", "房产投资者", "股民"]
+      related_keywords: ["金钱", "复利", "债务"]
+
+  # ============================================
+  # 🔵 第二象限：关系与情感 (The Connection)
+  # 属性：感性、连接、波动、社会属性
+  # 视角：【情感】重建期的你、社会学视角
+  # 核心问题：我与他人的关系如何？
+  # ============================================
+  quadrant_2_connection:
+    - name: "爱"
+      english: "Love"
+      category: "emotion"
+      default_weight: 1.8
+      description: "最高的能量频率，也是最大的软肋"
+      mentors_preferred: ["诗人", "心理学家", "哲学家", "热恋中的人"]
+      related_keywords: ["伴侣", "父母", "情绪"]
+
+    - name: "父母"
+      english: "Parents"
+      category: "family"
+      default_weight: 1.5
+      description: "生命的来处，需要和解的对象"
+      mentors_preferred: ["心理学家", "中年人", "老年人", "孤儿"]
+      related_keywords: ["和解", "家庭", "责任"]
+
+    - name: "伴侣"
+      english: "Partner"
+      category: "intimate"
+      default_weight: 1.6
+      description: "价值合伙人，人生最大的投资选择"
+      mentors_preferred: ["婚姻咨询师", "金婚夫妇", "离婚者", "单身贵族"]
+      related_keywords: ["爱", "选择", "信任"]
+
+    - name: "孤独"
+      english: "Loneliness"
+      category: "emotion"
+      default_weight: 1.4
+      description: "强者的常态，内省的最佳时刻"
+      mentors_preferred: ["哲学家", "独居者", "内向者", "艺术家"]
+      related_keywords: ["自我", "自由", "朋友"]
+
+    - name: "信任"
+      english: "Trust"
+      category: "social"
+      default_weight: 1.3
+      description: "协作成本最低的契约"
+      mentors_preferred: ["合作专家", "被背叛者", "心理学家", "宗教人士"]
+      related_keywords: ["伴侣", "朋友", "原谅"]
+
+    - name: "遗憾"
+      english: "Regret"
+      category: "emotion"
+      default_weight: 1.2
+      description: "决策偏差带来的后效情绪"
+      mentors_preferred: ["老年人", "临终关怀师", "心理学家", "普通人"]
+      related_keywords: ["选择", "告别", "和解"]
+
+    - name: "嫉妒"
+      english: "Jealousy"
+      category: "emotion"
+      default_weight: 1.0
+      description: "意识到自己匮乏的信号"
+      mentors_preferred: ["心理学家", "哲学家", "普通人", "成功者"]
+      related_keywords: ["欲望", "自我", "阶层"]
+
+    - name: "面子"
+      english: "Face"
+      category: "social"
+      default_weight: 1.1
+      description: "他人眼中的投影，往往束缚自我"
+      mentors_preferred: ["社会学家", "成功人士", "失败者", "哲学家"]
+      related_keywords: ["尊重", "自我", "社会"]
+
+    - name: "归属感"
+      english: "Belonging"
+      category: "psychological"
+      default_weight: 1.5
+      description: "群体性动物的本能需求"
+      mentors_preferred: ["社会学家", "移民者", "边缘群体", "社群运营"]
+      related_keywords: ["朋友", "父母", "自我"]
+
+    - name: "告别"
+      english: "Farewell"
+      category: "emotion"
+      default_weight: 1.3
+      description: "断舍离，成长的必修课"
+      mentors_preferred: ["心理学家", "哲学家", "经历丧亲者", "移民者"]
+      related_keywords: ["遗憾", "父母", "无常"]
+
+    - name: "尊重"
+      english: "Respect"
+      category: "social"
+      default_weight: 1.2
+      description: "心理地位的确认"
+      mentors_preferred: ["领导者", "下属", "社会学家", "父母"]
+      related_keywords: ["面子", "阶层", "权力"]
+
+    - name: "情绪"
+      english: "Emotion"
+      category: "psychological"
+      default_weight: 1.6
+      description: "大脑对环境的生化反应，需被管理而非压抑"
+      mentors_preferred: ["心理学家", "情商教练", "哲学家", "普通情绪化者"]
+      related_keywords: ["健康", "爱", "压力"]
+
+    - name: "原谅"
+      english: "Forgiveness"
+      category: "emotion"
+      default_weight: 1.4
+      description: "放过自己，停止内耗的手段"
+      mentors_preferred: ["宗教人士", "心理学家", "受害者", "哲学家"]
+      related_keywords: ["和解", "遗憾", "父母"]
+
+    - name: "朋友"
+      english: "Friends"
+      category: "social"
+      default_weight: 1.3
+      description: "阶段性的同行者"
+      mentors_preferred: ["社交达人", "孤独者", "中年人", "年轻人"]
+      related_keywords: ["孤独", "信任", "告别"]
+
+    - name: "孩子"
+      english: "Children"
+      category: "family"
+      default_weight: 1.5
+      description: "基因的延续，责任的具象化"
+      mentors_preferred: ["父母", "教育家", "丁克族", "子女"]
+      related_keywords: ["父母", "责任", "时间"]
+
+  # ============================================
+  # 🟡 第三象限：成长与认知 (The Growth)
+  # 属性：进取、迭代、理性、工具属性
+  # 视角：【顶层】马斯克、第一性原理、INTJ视角
+  # 核心问题：我如何变得更好？
+  # ============================================
+  quadrant_3_growth:
+    - name: "选择"
+      english: "Choice"
+      category: "decision"
+      default_weight: 2.0
+      description: "决定命运的关键节点，大于努力"
+      mentors_preferred: ["企业家", "决策专家", "哲学家", "迷茫的年轻人"]
+      related_keywords: ["风险", "改变", "认知"]
+
+    - name: "认知"
+      english: "Cognition"
+      category: "mental"
+      default_weight: 1.8
+      description: "人与人之间唯一的本质壁垒"
+      mentors_preferred: ["思想家", "科学家", "认知科学家", "普通人"]
+      related_keywords: ["学习", "逻辑", "阶层"]
+
+    - name: "习惯"
+      english: "Habit"
+      category: "behavioral"
+      default_weight: 1.6
+      description: "自动化的行为模式，复利的载体"
+      mentors_preferred: ["行为心理学家", "自律达人", "习惯研究专家", "普通人"]
+      related_keywords: ["复利", "改变", "执行"]
+
+    - name: "复利"
+      english: "Compounding"
+      category: "mathematical"
+      default_weight: 1.7
+      description: "世界第八大奇迹，长期主义的核心"
+      mentors_preferred: ["投资家", "长期主义者", "数学家", "短视者"]
+      related_keywords: ["时间", "耐心", "习惯"]
+
+    - name: "专注"
+      english: "Focus"
+      category: "attention"
+      default_weight: 1.8
+      description: "注意力的聚焦，稀缺的生产力"
+      mentors_preferred: ["深度工作者", "禅修者", "效率专家", "分心者"]
+      related_keywords: ["时间", "执行", "学习"]
+
+    - name: "学习"
+      english: "Learning"
+      category: "growth"
+      default_weight: 1.6
+      description: "系统升级的唯一途径"
+      mentors_preferred: ["教育家", "终身学习者", "科学家", "辍学者"]
+      related_keywords: ["认知", "习惯", "时间"]
+
+    - name: "失败"
+      english: "Failure"
+      category: "experience"
+      default_weight: 1.4
+      description: "排除错误路径的数据反馈"
+      mentors_preferred: ["企业家", "科学家", "连续创业者", "普通人"]
+      related_keywords: ["成功", "风险", "执行"]
+
+    - name: "逻辑"
+      english: "Logic"
+      category: "thinking"
+      default_weight: 1.5
+      description: "思考的骨架，祛除迷雾的工具"
+      mentors_preferred: ["哲学家", "数学家", "程序员", "诡辩受害者"]
+      related_keywords: ["认知", "真理", "选择"]
+
+    - name: "改变"
+      english: "Change"
+      category: "transformation"
+      default_weight: 1.7
+      description: "违背人性的舒适区，但却是进化的必须"
+      mentors_preferred: ["转型者", "心理学家", "变革领导者", "守旧者"]
+      related_keywords: ["舒适区", "风险", "成长"]
+
+    - name: "耐心"
+      english: "Patience"
+      category: "virtue"
+      default_weight: 1.6
+      description: "等待临界点到来的能力"
+      mentors_preferred: ["投资家", "园艺师", "禅修者", "急躁者"]
+      related_keywords: ["复利", "时间", "等待"]
+
+    - name: "焦虑"
+      english: "Anxiety"
+      category: "emotion"
+      default_weight: 1.5
+      description: "能力与野心不匹配时的状态"
+      mentors_preferred: ["心理学家", "焦虑症患者", "哲学家", "年轻人"]
+      related_keywords: ["压力", "选择", "时间"]
+
+    - name: "竞争"
+      english: "Competition"
+      category: "game"
+      default_weight: 1.3
+      description: "资源有限环境下的必然博弈"
+      mentors_preferred: ["企业家", "运动员", "博弈论专家", "佛系青年"]
+      related_keywords: ["阶层", "风险", "成功"]
+
+    - name: "天赋"
+      english: "Talent"
+      category: "potential"
+      default_weight: 1.2
+      description: "初始属性点，需被挖掘"
+      mentors_preferred: ["天才", "教育家", "普通人", "天赋测试专家"]
+      related_keywords: ["学习", "努力", "选择"]
+
+    - name: "执行"
+      english: "Execution"
+      category: "action"
+      default_weight: 1.8
+      description: "将想法变为现实的桥梁"
+      mentors_preferred: ["实干家", "企业家", "拖延症患者", "行动派"]
+      related_keywords: ["选择", "习惯", "失败"]
+
+    - name: "阶层"
+      english: "Class"
+      category: "social"
+      default_weight: 1.4
+      description: "社会资源的分配层级"
+      mentors_preferred: ["社会学家", "跨越阶层者", "底层奋斗者", "贵族"]
+      related_keywords: ["贫穷", "认知", "竞争"]
+
+  # ============================================
+  # 🟣 第四象限：终极与哲思 (The Ultimate)
+  # 属性：抽象、宏大、精神、终局思维
+  # 视角：【顶层】老子、乔布斯、哲学视角
+  # 核心问题：这一切的意义是什么？
+  # ============================================
+  quadrant_4_ultimate:
+    - name: "自由"
+      english: "Freedom"
+      category: "ultimate"
+      default_weight: 2.0
+      description: "选择权的极致，不仅仅是财富自由"
+      mentors_preferred: ["哲学家", "斯多葛学者", "隐士", "数字游民"]
+      related_keywords: ["自我", "权力", "金钱"]
+
+    - name: "意义"
+      english: "Meaning"
+      category: "existential"
+      default_weight: 1.8
+      description: "对抗虚无的武器，主观赋予的价值"
+      mentors_preferred: ["哲学家", "宗教人士", "抑郁康复者", "艺术家"]
+      related_keywords: ["虚无", "自我", "信仰"]
+
+    - name: "死亡"
+      english: "Death"
+      category: "ultimate"
+      default_weight: 1.7
+      description: "终点，赋予生命以紧迫感"
+      mentors_preferred: ["临终关怀师", "濒死体验者", "哲学家", "老年人"]
+      related_keywords: ["生命", "意义", "无常"]
+
+    - name: "命运"
+      english: "Destiny"
+      category: "metaphysical"
+      default_weight: 1.5
+      description: "概率与因果的集合体"
+      mentors_preferred: ["算命师", "哲学家", "信命者", "改命者"]
+      related_keywords: ["因果", "选择", "无常"]
+
+    - name: "真理"
+      english: "Truth"
+      category: "epistemological"
+      default_weight: 1.6
+      description: "客观世界的底层代码"
+      mentors_preferred: ["科学家", "哲学家", "宗教人士", "怀疑论者"]
+      related_keywords: ["认知", "逻辑", "信仰"]
+
+    - name: "自我"
+      english: "Self"
+      category: "identity"
+      default_weight: 1.8
+      description: "剥离社会角色后剩下的那个核心"
+      mentors_preferred: ["心理学家", "哲学家", "冥想者", "迷茫者"]
+      related_keywords: ["自由", "意义", "面具"]
+
+    - name: "遗忘"
+      english: "Forgetting"
+      category: "memory"
+      default_weight: 1.2
+      description: "大脑的垃圾清理机制"
+      mentors_preferred: ["神经科学家", "失忆者", "哲学家", "记性好者"]
+      related_keywords: ["记忆", "放下", "时间"]
+
+    - name: "权力"
+      english: "Power"
+      category: "social"
+      default_weight: 1.3
+      description: "支配资源的能量"
+      mentors_preferred: ["政治家", "企业家", "哲学家", "无权者"]
+      related_keywords: ["自由", "阶层", "责任"]
+
+    - name: "公平"
+      english: "Fairness"
+      category: "moral"
+      default_weight: 1.1
+      description: "理想状态，现实中往往不存在"
+      mentors_preferred: ["法学家", "社会活动家", "哲学家", "受害者"]
+      related_keywords: ["正义", "阶层", "权力"]
+
+    - name: "无常"
+      english: "Impermanence"
+      category: "philosophical"
+      default_weight: 1.4
+      description: "世界变化的唯一永恒"
+      mentors_preferred: ["佛学家", "老子", "经历巨变者", "普通人"]
+      related_keywords: ["变化", "命运", "放下"]
+
+    - name: "创造"
+      english: "Creation"
+      category: "expression"
+      default_weight: 1.6
+      description: "接近神性的行为"
+      mentors_preferred: ["艺术家", "发明家", "作家", "创作者"]
+      related_keywords: ["意义", "自我", "天赋"]
+
+    - name: "责任"
+      english: "Responsibility"
+      category: "moral"
+      default_weight: 1.5
+      description: "成年人的标志，权力的对等物"
+      mentors_preferred: ["领导者", "父母", "哲学家", "逃避者"]
+      related_keywords: ["权力", "孩子", "选择"]
+
+    - name: "和解"
+      english: "Reconciliation"
+      category: "emotional"
+      default_weight: 1.4
+      description: "与过去、与不完美、与世界达成一致"
+      mentors_preferred: ["心理学家", "宗教人士", "经历创伤者", "哲学家"]
+      related_keywords: ["原谅", "父母", "接受"]
+
+    - name: "信仰"
+      english: "Belief"
+      category: "spiritual"
+      default_weight: 1.5
+      description: "在看不见时依然选择相信"
+      mentors_preferred: ["宗教人士", "哲学家", "信徒", "无神论者"]
+      related_keywords: ["意义", "真理", "希望"]
+
+    - name: "因果"
+      english: "Causality"
+      category: "philosophical"
+      default_weight: 1.6
+      description: "种瓜得瓜，所有行为必有果"
+      mentors_preferred: ["佛学家", "科学家", "哲学家", "宿命论者"]
+      related_keywords: ["命运", "选择", "时间"]
+
+# ============================================
+# 元数据
+# ============================================
+metadata:
+  version: "1.0"
+  total_keywords: 60
+  quadrants: 4
+  keywords_per_quadrant: 15
+  last_updated: "2026-01-17"
