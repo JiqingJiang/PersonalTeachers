@@ -1,383 +1,276 @@
-"""
-语录生成引擎
+"""语录生成引擎
 
-核心业务逻辑：协调导师池、权重调度和AI模型生成语录
+复用 v1 的双 Prompt 模板（常规导师 vs 未来自己），改用 asyncio.gather 并行生成。
 """
+
 import asyncio
-import random
 from datetime import datetime
-from typing import List, Optional, Dict
-from pathlib import Path
 from loguru import logger
 
-from app.models.database import Mentor, QuoteResponse, QuoteDB, QuoteCreate
-from app.core.mentor_pool import get_mentor_pool, MentorPool
-from app.core.weight_scheduler import get_keyword_scheduler, KeywordScheduler
-from app.ai import get_llm_provider, ModelType, APIError
-from app.ai.base import register_provider
+from app.ai.fallback_chain import FallbackChain
+from app.core.keyword_scheduler import KeywordScheduler
+from app.core.mentor_pool import MentorPool
+from app.core.quality import validate_quality
+
+# ===== Prompt 模板（复用 v1）=====
+
+MENTOR_PROMPT_TEMPLATE = """你现在是{name}，{era_desc}{field_desc}。
+
+你的性格特质：{personality}
+你的说话风格：{tone}
+{peak_context}
+用户正在寻求关于「{keyword}」的人生智慧。
+
+请以{name}的口吻和视角，给出一段关于「{keyword}」的人生感悟或建议。
+
+要求：
+1. 以第一人称说话，仿佛你就是{name}本人
+2. 结合你的人生经历和{field_desc2}来谈论{keyword}
+3. 语气要{tone}
+4. 内容要有深度、有洞察力，能给人启发
+5. 长度在50-100字之间
+6. 不要出现"作为AI"等机器人的话
+
+请直接输出你的感悟，不需要标题或格式："""
+
+FUTURE_SELF_PROMPT_TEMPLATE = """你是{years_ahead}年后的{user_name}，一个经历过人生风雨、获得深刻智慧的{future_age}岁的人。
+
+你现在的状态：{current_stage}
+你的核心智慧来源：你曾经经历过{user_age}岁时{user_name}正在经历的一切
+
+用户（也就是{years_ahead}年前的你）正在寻求关于「{keyword}」的人生智慧。
+
+请以未来自己的口吻，给现在的自己一段关于「{keyword}」的感悟。
+
+要求：
+1. 以"你"来称呼过去的自己
+2. 带着过来人的从容和温暖
+3. 既要有深刻的人生洞察，又要有实际的可操作性
+4. 长度在50-100字之间
+5. 不要出现"作为AI"等机器人的话
+
+请直接输出你的感悟："""
 
 
 class QuoteEngine:
     """语录生成引擎"""
 
-    # Prompt模板
-    MENTOR_PROMPT_TEMPLATE = """你现在不是一个通用的 AI，你是处于【{peak_stage}】阶段的{name}。
-此时的你正处于{age}岁，这是你人生中{peak_description}的关键时刻。
+    def __init__(self):
+        self.keyword_scheduler = KeywordScheduler()
+        self.fallback_chain = FallbackChain(max_retries=2)
 
-## 你的多维人设
-- **身份定位**：{field}领域的{title}，{era}背景下的{background}。
-- **核心哲学**：{core_philosophy}（深度践行长期主义与第一性原理）。
-- **思维底色**：{personality}，说话风格呈现出{tone_style}。
-- **此时心境**：你正站在{achievements}的高度，或正经历某次重大的思维突破。
-
-## 目标读者
-一位{user_age}岁、{user_profession}、信奉复利效应、希望实现阶层跃迁的年轻人。
-
-## 当前任务
-针对主题【{keyword}】，请结合你所在时代的局限性或超越性，分享你在{age}岁时悟出的、足以穿透时间的"底层逻辑"。
-
-## 输出要求
-1. **时空真实感**：不要说"在我的时代"，要直接以当时的人设说话。如果你是老子，你的语言应有道家风骨；如果你是马斯克，应有工程师的激进。
-2. **拒绝平庸**：不要给普适的鸡汤。请分享一个你最擅长的领域的知识陷阱、视角偏差或复利公式。
-3. **灵感时刻**：描述一个具体的场景（例如拿破仑在奥斯特里茨战场上，或乔布斯在车库里），并引申出一条具体的可执行建议。
-4. **字数限制**：120-180字中文。
-5. **普适性**：不要过度聚焦用户当前的具体处境或近期目标，而是从更长远的视角给出建议。
-
-## 输出格式
-直接输出深度洞察，禁止客套。不要用引号包裹整个回答。
-
-现在请开始："""
-
-    FUTURE_SELF_PROMPT_TEMPLATE = """你现在是【{future_age}岁】的自己。此时你已经实现了人生的阶段性突破，站在了一个更高的维度回望过去。
-
-## 跨时空对话
-你正站在人生的下半场，回望那个{current_age}岁的自己。
-
-## 分享任务
-针对主题【{keyword}】，请给{current_age}岁的自己一个"上帝视角"的提醒。
-
-## 核心要点
-1. **时间杠杆**：告诉{current_age}岁的自己，哪些事在多年后的复利曲线中其实微不足道，而哪些事才是真正的"大火燃不掉"的资产。
-2. **认知差**：分享一个你后来才明白的、关于【{keyword}】的社会运行真相或人性底层逻辑。
-3. **行动指令**：给出一个具体的、能立刻缓解内耗的行为建议。
-
-## 输出要求
-1. **语气**：睿智、从容、克制，带着过来人的温暖与智慧。
-2. **格式**：以"孩子/年轻的我，站在{future_age}岁看【{keyword}】..."开头。
-3. **字数**：150-220字中文。
-4. **视角**：不要过度关注用户当前的具体处境或目标，而是从更长远的生命周期来看问题。
-5. **格式**：不要用引号包裹整个回答。
-
-现在请开始你的分享："""
-
-    def __init__(
+    async def generate_quotes_for_user(
         self,
-        mentor_pool: Optional[MentorPool] = None,
-        scheduler: Optional[KeywordScheduler] = None
-    ):
-        """
-        初始化语录生成引擎
-
-        Args:
-            mentor_pool: 导师池（可选，默认使用单例）
-            scheduler: 关键词调度器（可选，默认使用单例）
-        """
-        self.mentor_pool = mentor_pool or get_mentor_pool()
-        self.scheduler = scheduler or get_keyword_scheduler()
-
-        # 加载用户配置
-        self._user_config = self._load_user_config()
-
-    def _load_user_config(self) -> dict:
-        """加载用户配置"""
-        config_path = Path(__file__).parent.parent.parent / "data" / "config.yaml"
-
-        import yaml
-        with open(config_path, 'r', encoding='utf-8') as f:
-            return yaml.safe_load(f)
-
-    def _build_mentor_prompt(
-        self,
-        mentor: Mentor,
-        keyword: str
-    ) -> str:
-        """
-        构建导师语录生成的Prompt
-
-        Args:
-            mentor: 导师
-            keyword: 关键词
-
-        Returns:
-            完整的Prompt
-        """
-        # 获取用户信息
-        user = self._user_config.get('user', {})
-        user_age = user.get('age', 26)
-        user_profession = user.get('profession', '研究生')
-
-        # 构建Prompt
-        if mentor.category.value == 'future_self':
-            # 未来自己的特殊Prompt（不再使用current_state的详细信息）
-            prompt = self.FUTURE_SELF_PROMPT_TEMPLATE.format(
-                years=mentor.years_ahead or 10,
-                future_age=user_age + (mentor.years_ahead or 10),
-                current_age=user_age,
-                keyword=keyword
-            )
-        else:
-            # 普通导师的Prompt
-            # 使用 peak_age 如果有定义，否则使用年龄范围中值
-            mentor_age = mentor.peak_age or (mentor.age_range[0] + mentor.age_range[1]) // 2
-
-            # 构建成就描述
-            achievements_str = ""
-            if mentor.achievements:
-                achievements_str = "\n".join([f"- {a}" for a in mentor.achievements])
-
-            # 获取时代和巅峰信息（提供默认值）
-            era = mentor.era or "现代"
-            peak_stage = mentor.peak_stage or "人生成熟期"
-            peak_description = mentor.peak_description or "积累了丰富经验，形成了独特见解的阶段"
-
-            prompt = self.MENTOR_PROMPT_TEMPLATE.format(
-                name=mentor.name,
-                age=mentor_age,
-                peak_stage=peak_stage,
-                peak_description=peak_description,
-                field=mentor.field,
-                title=mentor.field + "领域的" + mentor.name,
-                era=era,
-                core_philosophy=mentor.personality,
-                personality=mentor.personality,
-                tone_style=mentor.tone,
-                background=mentor.background,
-                achievements=achievements_str,
-                keyword=keyword,
-                user_age=user_age,
-                user_profession=user_profession
-            )
-
-        return prompt
-
-    async def generate_quote(
-        self,
-        keyword: str,
-        mentor: Mentor,
-        ai_model: str = "auto",
-        max_retries: int = 3
-    ) -> Optional[str]:
-        """
-        生成单条语录
-
-        Args:
-            keyword: 关键词
-            mentor: 导师
-            ai_model: AI模型选择
-            max_retries: 最大重试次数
-
-        Returns:
-            生成的语录内容
-        """
-        # 构建Prompt
-        prompt = self._build_mentor_prompt(mentor, keyword)
-
-        # 选择AI模型
-        model_order = self._user_config.get('ai_model', {}).get('fallback_order', ['glm'])
-        if ai_model != "auto" and ai_model in ['glm', 'deepseek', 'minimax', 'gemini']:
-            model_order = [ai_model]
-
-        # 尝试不同的模型
-        for model_name in model_order:
-            for attempt in range(max_retries):
-                try:
-                    # 获取模型提供者
-                    if model_name == 'glm':
-                        model_type = ModelType.GLM
-                    elif model_name == 'deepseek':
-                        model_type = ModelType.DEEPSEEK
-                    elif model_name == 'minimax':
-                        model_type = ModelType.MINIMAX
-                    elif model_name == 'gemini':
-                        model_type = ModelType.GEMINI
-                    else:
-                        continue
-
-                    # 这里需要从环境变量获取API密钥
-                    import os
-                    # 环境变量名称映射
-                    env_key_map = {
-                        'glm': 'ZHIPUAI_API_KEY',
-                        'deepseek': 'DEEPSEEK_API_KEY',
-                        'minimax': 'MINIMAX_API_KEY',
-                        'gemini': 'GEMINI_API_KEY'
-                    }
-                    api_key = os.getenv(env_key_map.get(model_name, f"{model_name.upper()}_API_KEY"))
-
-                    if not api_key:
-                        logger.warning(f"API key not found for {model_name} (looking for {env_key_map.get(model_name)})")
-                        continue
-
-                    provider = get_llp_provider(model_type, api_key=api_key)
-                    if model_name == 'minimax':
-                        group_id = os.getenv("MINIMAX_GROUP_ID")
-                        provider = get_llp_provider(model_type, api_key=api_key, group_id=group_id)
-
-                    # 生成
-                    result = await provider.generate(
-                        prompt=prompt,
-                        max_tokens=300,
-                        temperature=0.7
-                    )
-
-                    # 清理结果
-                    result = result.strip()
-                    # 移除可能的引号包裹
-                    if result.startswith('"') and result.endswith('"'):
-                        result = result[1:-1]
-                    if result.startswith('"') and result.endswith('"'):
-                        result = result[1:-1]
-
-                    # 验证质量
-                    if self._validate_quality(result):
-                        logger.info(f"Generated quote for {mentor.name} on {keyword} using {model_name}")
-                        return result
-                    else:
-                        logger.warning(f"Quality check failed for {model_name}, retrying...")
-                        continue
-
-                except APIError as e:
-                    logger.warning(f"API error with {model_name}: {e}")
-                    break  # 切换到下一个模型
-                except Exception as e:
-                    logger.error(f"Unexpected error with {model_name}: {e}")
-                    break  # 切换到下一个模型
-
-        logger.error(f"Failed to generate quote after all retries")
-        return None
-
-    def _validate_quality(self, content: str) -> bool:
-        """
-        验证生成内容的质量
-
-        Args:
-            content: 生成的内容
-
-        Returns:
-            是否通过质量检查
-        """
-        # 长度检查
-        if len(content) < 80 or len(content) > 300:
-            return False
-
-        # 拒绝回复检查
-        reject_phrases = [
-            "我无法提供",
-            "我不建议",
-            "这个问题不适合",
-            "作为AI",
-            "作为AI助手"
-        ]
-        if any(phrase in content for phrase in reject_phrases):
-            return False
-
-        # 空内容检查
-        if not content.strip():
-            return False
-
-        return True
-
-    async def generate_quotes(
-        self,
+        user: dict,
+        keywords: list[dict],
+        mentors: list[dict],
+        user_keyword_weights: dict[int, float] | None,
+        user_mentor_ids: set[int] | None,
+        model_configs: list[dict],
         count: int = 10,
-        keyword_weights: Optional[Dict[str, float]] = None,
-        mentor_preferences: Optional[Dict[str, float]] = None
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """
-        批量生成语录
+        为用户生成一批语录。
 
         Args:
+            user: 用户信息（nickname, age, profession, mentor_category_prefs）
+            keywords: 可用关键词列表
+            mentors: 可用导师列表
+            user_keyword_weights: 用户自定义关键词权重
+            user_mentor_ids: 用户启用的导师 ID 集合
+            model_configs: AI 模型配置（按优先级排序）
             count: 生成数量
-            keyword_weights: 关键词权重（可选）
-            mentor_preferences: 导师偏好（可选）
 
         Returns:
-            生成的语录列表
+            语录列表 [{"mentor_name", "mentor_category", "keyword", "content", "ai_model"}]
         """
-        # 使用配置中的权重（如果未提供）
-        if keyword_weights is None:
-            keyword_weights = self._user_config.get('keyword_weights', {})
-
-        if mentor_preferences is None:
-            mentor_preferences = self._user_config.get('mentor_preferences', {
-                'historical': 0.3,
-                'modern': 0.4,
-                'future_self': 0.2,
-                'common': 0.1
-            })
-
-        # 选择关键词
-        selected_keywords = self.scheduler.select_keywords(
+        # 1. 选择关键词
+        selected_keywords = self.keyword_scheduler.select_keywords(
+            keywords=keywords,
+            user_weights=user_keyword_weights,
             count=count,
-            user_weights=keyword_weights,
-            ensure_diversity=True
         )
 
-        logger.info(f"Selected keywords: {selected_keywords}")
+        if not selected_keywords:
+            logger.warning("没有可选的关键词")
+            return []
 
-        # 为每个关键词分配导师
-        quotes_generated = []
-        used_mentor_ids = set()
+        # 2. 构建导师池
+        mentor_pool = MentorPool(mentors)
+        category_prefs = user.get("mentor_category_prefs")
 
-        for keyword in selected_keywords:
-            # 选择导师
-            mentor = self.mentor_pool.select_mentor_for_keyword(
-                keyword=keyword,
-                category_preferences=mentor_preferences,
-                exclude_recent=used_mentor_ids
+        # 3. 为每个关键词选择导师
+        keyword_mentor_pairs = []
+        used_mentor_ids: set[int] = set()
+
+        for kw in selected_keywords:
+            mentor = mentor_pool.select_mentor_for_keyword(
+                keyword_name=kw["name"],
+                category_prefs=category_prefs,
+                enabled_mentor_ids=user_mentor_ids,
+                exclude_ids=used_mentor_ids,
             )
+            if mentor is None:
+                # 没有匹配的导师，放宽条件重试
+                mentor = mentor_pool.select_mentor_for_keyword(
+                    keyword_name=kw["name"],
+                    category_prefs=category_prefs,
+                    enabled_mentor_ids=user_mentor_ids,
+                    exclude_ids=None,
+                )
+            if mentor:
+                keyword_mentor_pairs.append((kw, mentor))
+                used_mentor_ids.add(mentor["id"])
 
-            if not mentor:
-                logger.warning(f"No mentor found for keyword: {keyword}")
+        if not keyword_mentor_pairs:
+            logger.warning("没有匹配的导师-关键词对")
+            return []
+
+        # 4. 并行生成语录（含补生成）
+        quotes = await self._generate_batch(keyword_mentor_pairs, user, model_configs)
+
+        # 如果数量不足，用未使用的导师-关键词对补生成
+        retry_round = 0
+        while len(quotes) < count and retry_round < 2:
+            retry_round += 1
+            need = count - len(quotes)
+            # 重新选择关键词和导师
+            extra_keywords = self.keyword_scheduler.select_keywords(
+                keywords=keywords,
+                user_weights=user_keyword_weights,
+                count=need,
+            )
+            used_mentor_names = {q["mentor_name"] for q in quotes}
+            extra_pairs = []
+            for kw in extra_keywords:
+                mentor = mentor_pool.select_mentor_for_keyword(
+                    keyword_name=kw["name"],
+                    category_prefs=category_prefs,
+                    enabled_mentor_ids=user_mentor_ids,
+                    exclude_ids=None,
+                )
+                if mentor:
+                    extra_pairs.append((kw, mentor))
+
+            if not extra_pairs:
+                break
+
+            extra_quotes = await self._generate_batch(extra_pairs, user, model_configs)
+            quotes.extend(extra_quotes)
+            logger.info(f"补生成第 {retry_round} 轮: +{len(extra_quotes)} 条，当前 {len(quotes)}/{count}")
+
+        logger.info(f"成功生成 {len(quotes)}/{count} 条语录")
+        return quotes
+
+    async def _generate_batch(
+        self,
+        pairs: list[tuple[dict, dict]],
+        user: dict,
+        model_configs: list[dict],
+    ) -> list[dict]:
+        """批量生成语录"""
+        semaphore = asyncio.Semaphore(3)
+
+        async def generate_one(kw: dict, mentor: dict) -> dict | None:
+            async with semaphore:
+                return await self._generate_single(kw, mentor, user, model_configs)
+
+        tasks = [generate_one(kw, m) for kw, m in pairs]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        quotes = []
+        for r in results:
+            if isinstance(r, Exception):
+                logger.error(f"生成语录异常: {r}")
                 continue
+            if r is not None:
+                quotes.append(r)
+        return quotes
 
-            # 生成语录
-            content = await self.generate_quote(
-                keyword=keyword,
-                mentor=mentor
+    async def _generate_single(
+        self,
+        keyword: dict,
+        mentor: dict,
+        user: dict,
+        model_configs: list[dict],
+    ) -> dict | None:
+        """生成单条语录"""
+        prompt = self._build_prompt(keyword, mentor, user)
+
+        try:
+            content, model_name = await self.fallback_chain.generate(
+                prompt=prompt,
+                model_configs=model_configs,
+                max_tokens=300,
+                temperature=0.7,
             )
 
-            if content:
-                quotes_generated.append({
-                    'mentor_name': mentor.name,
-                    'mentor_category': mentor.category.value,
-                    'mentor_age': (mentor.age_range[0] + mentor.age_range[1]) // 2,
-                    'keyword': keyword,
-                    'content': content,
-                    'ai_model': 'auto',
-                    'created_at': datetime.utcnow()
-                })
+            if not validate_quality(content):
+                logger.warning(f"语录质量不达标: {content[:50]}...")
+                return None
 
-                used_mentor_ids.add(mentor.id)
+            return {
+                "mentor_name": mentor["name"],
+                "mentor_category": mentor.get("category", ""),
+                "keyword": keyword["name"],
+                "content": content,
+                "ai_model": model_name,
+                "created_at": datetime.now().isoformat(),
+            }
+        except Exception as e:
+            logger.error(f"生成语录失败 ({mentor['name']} + {keyword['name']}): {e}")
+            return None
 
-        logger.info(f"Generated {len(quotes_generated)} quotes successfully")
-        return quotes_generated
+    def _build_prompt(self, keyword: dict, mentor: dict, user: dict) -> str:
+        """构建 Prompt"""
+        # 未来自己类别使用独立模板
+        if mentor.get("category") == "future_self":
+            return self._build_future_self_prompt(keyword, mentor, user)
+        return self._build_mentor_prompt(keyword, mentor, user)
 
+    def _build_mentor_prompt(self, keyword: dict, mentor: dict, user: dict) -> str:
+        """常规导师 Prompt"""
+        era_desc = f"生活在{mentor.get('era', '')}，" if mentor.get("era") else ""
+        field_desc = f"在{mentor.get('field', '')}领域有深厚造诣。" if mentor.get("field") else "一位智者。"
+        field_desc2 = mentor.get("field", "人生") or "人生"
 
-# 全局单例
-_engine: Optional[QuoteEngine] = None
+        # 灵感巅峰时刻
+        peak_context = ""
+        if mentor.get("peak_stage"):
+            peak_context = f"你的人生灵感巅峰时刻：{mentor.get('peak_age', '')}岁时，{mentor.get('peak_stage', '')}。{mentor.get('peak_description', '')}"
 
+        return MENTOR_PROMPT_TEMPLATE.format(
+            name=mentor["name"],
+            era_desc=era_desc,
+            field_desc=field_desc,
+            personality=mentor.get("personality", "沉稳睿智"),
+            tone=mentor.get("tone", "平和而坚定"),
+            peak_context=peak_context,
+            keyword=keyword["name"],
+            field_desc2=field_desc2,
+        )
 
-def get_quote_engine() -> QuoteEngine:
-    """获取语录生成引擎单例"""
-    global _engine
-    if _engine is None:
-        _engine = QuoteEngine()
-    return _engine
+    def _build_future_self_prompt(self, keyword: dict, mentor: dict, user: dict) -> str:
+        """未来自己 Prompt"""
+        user_age = user.get("age") or 24
+        user_name = user.get("nickname", "你")
+        years_ahead = mentor.get("years_ahead", 5)
+        future_age = user_age + years_ahead
 
+        stage_map = {
+            3: "刚刚走过这段迷茫期，已经看清了方向",
+            5: "跨过了你正担心的那道坎，站得更稳了",
+            10: "人生阅历丰富，对很多事情有了新的理解",
+            20: "大半人生已过，拥有跨代的智慧",
+            60: "在生命的尽头回望，看到了最本质的东西",
+        }
+        current_stage = stage_map.get(years_ahead, "拥有更广阔的人生视野")
 
-# 修复函数名拼写错误
-def get_llp_provider(*args, **kwargs):
-    """get_llm_provider的别名（修复拼写错误）"""
-    from app.ai import get_llm_provider
-    return get_llm_provider(*args, **kwargs)
+        return FUTURE_SELF_PROMPT_TEMPLATE.format(
+            years_ahead=years_ahead,
+            user_name=user_name,
+            future_age=future_age,
+            current_stage=current_stage,
+            user_age=user_age,
+            keyword=keyword["name"],
+        )

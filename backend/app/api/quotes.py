@@ -1,289 +1,152 @@
-"""
-语录相关API端点
+"""语录 API"""
 
-提供语录生成、历史查询等功能
-"""
-from fastapi import APIRouter, HTTPException, Query
-from typing import List, Optional
-from datetime import datetime, timedelta
-from loguru import logger
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+from sqlalchemy import select, func, desc
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.database import (
-    QuoteResponse,
-    QuoteGenerateRequest,
-    StatsResponse
-)
-from app.core import get_quote_engine
+from app.api.deps import get_db, get_current_user
+from app.models import User, Quote, Keyword, Mentor, AIModel, UserKeywordPref, UserMentorPref
+from app.core.quote_engine import QuoteEngine
+
+router = APIRouter()
 
 
-router = APIRouter(prefix="/api/quotes", tags=["语录"])
+class QuoteResponse(BaseModel):
+    id: int
+    mentor_name: str
+    mentor_category: str
+    keyword: str
+    content: str
+    ai_model: str
+    created_at: str
+
+    model_config = {"from_attributes": True}
 
 
-@router.post("/generate", response_model=List[QuoteResponse])
-async def generate_quotes(request: QuoteGenerateRequest):
-    """
-    生成语录
-
-    根据配置的权重和偏好生成指定数量的语录
-    """
-    try:
-        logger.info(f"Generating {request.count} quotes...")
-
-        engine = get_quote_engine()
-
-        quotes_data = await engine.generate_quotes(
-            count=request.count,
-            keyword_weights=request.keyword_weights,
-            mentor_preferences=request.mentor_preferences
-        )
-
-        if not quotes_data:
-            raise HTTPException(status_code=500, detail="Failed to generate quotes")
-
-        # 转换为响应模型
-        quotes = [
-            QuoteResponse(
-                id=i,
-                mentor_name=q['mentor_name'],
-                mentor_category=q['mentor_category'],
-                mentor_age=q.get('mentor_age'),
-                keyword=q['keyword'],
-                content=q['content'],
-                ai_model=q.get('ai_model', 'auto'),
-                created_at=q.get('created_at', datetime.utcnow())
-            )
-            for i, q in enumerate(quotes_data)
-        ]
-
-        return quotes
-
-    except Exception as e:
-        logger.error(f"Error generating quotes: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+class HistoryResponse(BaseModel):
+    items: list[QuoteResponse]
+    total: int
+    page: int
+    page_size: int
 
 
-@router.get("/history")
-async def get_quote_history(
-    page: int = Query(1, ge=1, description="页码"),
-    page_size: int = Query(10, ge=1, le=100, description="每页数量"),
-    sort_by: str = Query("date_desc", description="排序方式"),
-    keyword: Optional[str] = Query(None, description="按关键词筛选"),
-    mentor: Optional[str] = Query(None, description="按导师名称筛选"),
-    date: Optional[str] = Query(None, description="按日期筛选(YYYY-MM-DD)"),
-    search: Optional[str] = Query(None, description="搜索内容")
+class PreviewRequest(BaseModel):
+    count: int = 3  # 预览条数，默认3
+
+
+@router.post("/preview")
+async def preview_quotes(
+    req: PreviewRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
-    """
-    获取历史语录
+    """生成预览语录（不保存、不发送）"""
+    # 获取用户可用的关键词
+    result = await db.execute(
+        select(Keyword).where(
+            (Keyword.is_system == True) | (Keyword.created_by_user_id == user.id)
+        )
+    )
+    keywords = [_orm_to_dict(kw) for kw in result.scalars().all()]
 
-    支持分页、筛选、搜索等功能
-    """
-    try:
-        from app.models.database import QuoteDB
-        from sqlalchemy import create_engine, or_, and_
-        from sqlalchemy.orm import sessionmaker
-        from pathlib import Path
-        from pydantic import BaseModel
+    # 获取用户可用的导师
+    result = await db.execute(
+        select(Mentor).where(
+            (Mentor.is_system == True) | (Mentor.created_by_user_id == user.id)
+        )
+    )
+    mentors = [_orm_to_dict(m) for m in result.scalars().all()]
 
-        class HistoryResponse(BaseModel):
-            quotes: List[QuoteResponse]
-            total: int
+    # 获取用户关键词权重
+    result = await db.execute(
+        select(UserKeywordPref).where(UserKeywordPref.user_id == user.id)
+    )
+    user_kw_weights = {p.keyword_id: p.weight for p in result.scalars().all()}
 
-        # 连接数据库
-        db_path = Path(__file__).parent.parent.parent / "storage" / "quotes.db"
-        engine = create_engine(f"sqlite:///{db_path}")
-        Session = sessionmaker(bind=engine)
-        session = Session()
+    # 获取用户启用的导师
+    result = await db.execute(
+        select(UserMentorPref).where(
+            UserMentorPref.user_id == user.id,
+            UserMentorPref.is_enabled == True,
+        )
+    )
+    user_mentor_ids = {p.mentor_id for p in result.scalars().all()} or None
 
-        try:
-            # 构建查询
-            query = session.query(QuoteDB)
+    # 获取 AI 模型配置
+    result = await db.execute(
+        select(AIModel).where(AIModel.is_active == True).order_by(AIModel.priority)
+    )
+    model_configs = [
+        {"name": m.name, "base_url": m.base_url, "api_key": m.api_key, "model_id": m.model_id}
+        for m in result.scalars().all()
+    ]
 
-            # 关键词筛选
-            if keyword:
-                query = query.filter(QuoteDB.keyword == keyword)
+    if not model_configs:
+        raise HTTPException(status_code=400, detail="没有可用的 AI 模型，请在管理后台配置")
 
-            # 导师名称筛选
-            if mentor:
-                query = query.filter(QuoteDB.mentor_name == mentor)
+    engine = QuoteEngine()
+    quotes = await engine.generate_quotes_for_user(
+        user={
+            "id": user.id,
+            "nickname": user.nickname,
+            "age": user.age,
+            "mentor_category_prefs": user.mentor_category_prefs,
+        },
+        keywords=keywords,
+        mentors=mentors,
+        user_keyword_weights=user_kw_weights,
+        user_mentor_ids=user_mentor_ids,
+        model_configs=model_configs,
+        count=req.count,
+    )
 
-            # 日期筛选
-            if date:
-                try:
-                    filter_date = datetime.strptime(date, "%Y-%m-%d").date()
-                    next_day = filter_date + timedelta(days=1)
-                    query = query.filter(
-                        QuoteDB.created_at >= datetime.combine(filter_date, datetime.min.time()),
-                        QuoteDB.created_at < datetime.combine(next_day, datetime.min.time())
-                    )
-                except ValueError:
-                    pass
-
-            # 搜索功能（内容、导师名称、关键词）
-            if search:
-                query = query.filter(
-                    or_(
-                        QuoteDB.content.like(f"%{search}%"),
-                        QuoteDB.mentor_name.like(f"%{search}%"),
-                        QuoteDB.keyword.like(f"%{search}%")
-                    )
-                )
-
-            # 获取总数
-            total = query.count()
-
-            # 排序
-            if sort_by == "date_desc":
-                query = query.order_by(QuoteDB.created_at.desc())
-            elif sort_by == "date_asc":
-                query = query.order_by(QuoteDB.created_at.asc())
-
-            # 分页
-            offset = (page - 1) * page_size
-            query = query.offset(offset).limit(page_size)
-
-            quotes_db = query.all()
-
-            # 转换为响应模型
-            quotes = [
-                QuoteResponse(
-                    id=q.id,
-                    mentor_name=q.mentor_name,
-                    mentor_category=q.mentor_category,
-                    mentor_age=q.mentor_age,
-                    keyword=q.keyword,
-                    content=q.content,
-                    ai_model=q.ai_model,
-                    created_at=q.created_at,
-                    quality_score=q.quality_score or 0.0
-                )
-                for q in quotes_db
-            ]
-
-            return HistoryResponse(quotes=quotes, total=total)
-
-        finally:
-            session.close()
-
-    except Exception as e:
-        logger.error(f"Error fetching quote history: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+    return quotes
 
 
-@router.get("/{quote_id}", response_model=QuoteResponse)
-async def get_quote_by_id(quote_id: int):
-    """
-    获取单条语录详情
-    """
-    try:
-        from app.models.database import QuoteDB
-        from sqlalchemy import create_engine
-        from sqlalchemy.orm import sessionmaker
-        from pathlib import Path
+@router.get("/history", response_model=HistoryResponse)
+async def get_history(
+    page: int = 1,
+    page_size: int = 20,
+    keyword: str | None = None,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """获取用户历史语录（分页）"""
+    query = select(Quote).where(Quote.user_id == user.id)
+    count_query = select(func.count()).select_from(Quote).where(Quote.user_id == user.id)
 
-        db_path = Path(__file__).parent.parent.parent / "storage" / "quotes.db"
-        engine = create_engine(f"sqlite:///{db_path}")
-        Session = sessionmaker(bind=engine)
-        session = Session()
+    if keyword:
+        query = query.where(Quote.keyword == keyword)
+        count_query = count_query.where(Quote.keyword == keyword)
 
-        try:
-            quote_db = session.query(QuoteDB).filter(QuoteDB.id == quote_id).first()
+    # 总数
+    total_result = await db.execute(count_query)
+    total = total_result.scalar() or 0
 
-            if not quote_db:
-                raise HTTPException(status_code=404, detail="Quote not found")
+    # 分页查询
+    query = query.order_by(desc(Quote.created_at)).offset((page - 1) * page_size).limit(page_size)
+    result = await db.execute(query)
+    quotes = result.scalars().all()
 
-            return QuoteResponse(
-                id=quote_db.id,
-                mentor_name=quote_db.mentor_name,
-                mentor_category=quote_db.mentor_category,
-                mentor_age=quote_db.mentor_age,
-                keyword=quote_db.keyword,
-                content=quote_db.content,
-                ai_model=quote_db.ai_model,
-                created_at=quote_db.created_at,
-                quality_score=quote_db.quality_score or 0.0
+    return HistoryResponse(
+        items=[
+            QuoteResponse(
+                id=q.id,
+                mentor_name=q.mentor_name,
+                mentor_category=q.mentor_category,
+                keyword=q.keyword,
+                content=q.content,
+                ai_model=q.ai_model,
+                created_at=q.created_at.isoformat() if q.created_at else "",
             )
-
-        finally:
-            session.close()
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error fetching quote: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+            for q in quotes
+        ],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
 
 
-@router.get("/stats", response_model=StatsResponse)
-async def get_statistics():
-    """
-    获取统计信息
-
-    包括语录总数、各维度分布、AI模型使用情况等
-    """
-    try:
-        from app.models.database import QuoteDB
-        from sqlalchemy import create_engine, func
-        from sqlalchemy.orm import sessionmaker
-        from pathlib import Path
-        from datetime import timedelta
-
-        db_path = Path(__file__).parent.parent.parent / "storage" / "quotes.db"
-        engine = create_engine(f"sqlite:///{db_path}")
-        Session = sessionmaker(bind=engine)
-        session = Session()
-
-        try:
-            # 总数
-            total_quotes = session.query(func.count(QuoteDB.id)).scalar()
-
-            # 本周
-            week_ago = datetime.utcnow() - timedelta(days=7)
-            quotes_this_week = session.query(func.count(QuoteDB.id)).filter(
-                QuoteDB.created_at >= week_ago
-            ).scalar()
-
-            # 本月
-            month_ago = datetime.utcnow() - timedelta(days=30)
-            quotes_this_month = session.query(func.count(QuoteDB.id)).filter(
-                QuoteDB.created_at >= month_ago
-            ).scalar()
-
-            # 按关键词统计
-            keyword_counts = {}
-            for result in session.query(
-                QuoteDB.keyword,
-                func.count(QuoteDB.id)
-            ).group_by(QuoteDB.keyword).all():
-                keyword_counts[result[0]] = result[1]
-
-            # 按导师类别统计
-            category_counts = {}
-            for result in session.query(
-                QuoteDB.mentor_category,
-                func.count(QuoteDB.id)
-            ).group_by(QuoteDB.mentor_category).all():
-                category_counts[result[0]] = result[1]
-
-            # 按AI模型统计
-            model_counts = {}
-            for result in session.query(
-                QuoteDB.ai_model,
-                func.count(QuoteDB.id)
-            ).group_by(QuoteDB.ai_model).all():
-                model_counts[result[0]] = result[1]
-
-            return StatsResponse(
-                total_quotes=total_quotes,
-                quotes_this_week=quotes_this_week,
-                quotes_this_month=quotes_this_month,
-                by_keyword=keyword_counts,
-                by_mentor_category=category_counts,
-                ai_model_usage=model_counts
-            )
-
-        finally:
-            session.close()
-
-    except Exception as e:
-        logger.error(f"Error fetching statistics: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+def _orm_to_dict(obj) -> dict:
+    return {c.name: getattr(obj, c.name) for c in obj.__table__.columns}

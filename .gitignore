@@ -73,3 +73,11 @@ htmlcov/
 *.bak
 *.log
 *.cache
+
+# ============================================
+# 前端构建产物
+# ============================================
+frontend/dist/
+admin/dist/
+frontend/node_modules/
+admin/node_modules/
