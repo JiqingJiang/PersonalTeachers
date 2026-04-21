@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PersonalTeachers — Your AI Learning Companion / 你的 AI 学习伙伴</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,700;1,300&family=Noto+Serif+SC:wght@400;700;900&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --charcoal: #1A1A2E;
+    --charcoal-light: #252540;
+    --amber: #E8A838;
+    --amber-deep: #D4763C;
+    --cream: #FFF8F0;
+    --cream-dim: #F5EDE0;
+    --teal: #2EC4B6;
+    --teal-deep: #1A9E92;
+    --text-light: rgba(255, 248, 240, 0.9);
+    --text-dark: #2A2A3E;
+    --text-muted: rgba(255, 248, 240, 0.55);
+    --font-display-en: 'Playfair Display', serif;
+    --font-body-en: 'DM Sans', sans-serif;
+    --font-display-zh: 'Noto Serif SC', serif;
+    --font-body-zh: 'Noto Sans SC', sans-serif;
+  }
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; font-size: 16px; }
+
+  body {
+    background: var(--charcoal);
+    color: var(--text-light);
+    font-family: var(--font-body-en), var(--font-body-zh), sans-serif;
+    font-weight: 300;
+    line-height: 1.7;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* — Noise overlay — */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* — Knowledge nodes (floating orbs) — */
+  .knowledge-node {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(60px);
+    opacity: 0;
+    pointer-events: none;
+    animation: nodeAppear 1.2s ease-out forwards;
+  }
+  @keyframes nodeAppear {
+    to { opacity: 1; }
+  }
+  @keyframes nodeDrift {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    25% { transform: translate(30px, -20px) scale(1.05); }
+    50% { transform: translate(-15px, 25px) scale(0.95); }
+    75% { transform: translate(20px, 15px) scale(1.02); }
+  }
+
+  /* — Navigation — */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0;
+    z-index: 100;
+    padding: 1.5rem 4rem;
+    display: flex; justify-content: space-between; align-items: center;
+    backdrop-filter: blur(20px);
+    background: rgba(26, 26, 46, 0.7);
+    border-bottom: 1px solid rgba(232, 168, 56, 0.08);
+    transition: background 0.4s;
+  }
+  .nav-logo {
+    font-family: var(--font-display-en), var(--font-display-zh);
+    font-weight: 700; font-size: 1.1rem;
+    color: var(--amber);
+    letter-spacing: 0.02em;
+  }
+  .nav-logo span { color: var(--text-light); font-weight: 300; }
+  .nav-links { display: flex; gap: 2.5rem; list-style: none; }
+  .nav-links a {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 400;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    transition: color 0.3s;
+    position: relative;
+  }
+  .nav-links a::after {
+    content: '';
+    position: absolute; bottom: -4px; left: 0;
+    width: 0; height: 1px;
+    background: var(--amber);
+    transition: width 0.3s;
+  }
+  .nav-links a:hover { color: var(--text-light); }
+  .nav-links a:hover::after { width: 100%; }
+
+  /* — Hero — */
+  .hero {
+    position: relative;
+    min-height: 100vh;
+    display: flex; align-items: center;
+    padding: 8rem 4rem 6rem;
+    overflow: hidden;
+  }
+  .hero-bg {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse 60% 50% at 70% 40%, rgba(232, 168, 56, 0.12) 0%, transparent 70%),
+      radial-gradient(ellipse 40% 60% at 20% 60%, rgba(212, 118, 60, 0.08) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 50% at 50% 100%, rgba(46, 196, 182, 0.05) 0%, transparent 50%);
+  }
+  .hero-grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(232, 168, 56, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(232, 168, 56, 0.03) 1px, transparent 1px);
+    background-size: 80px 80px;
+    mask-image: radial-gradient(ellipse 80% 70% at 50% 50%, black 30%, transparent 80%);
+  }
+  .hero-content {
+    position: relative;
+    z-index: 2;
+    max-width: 720px;
+  }
+  .hero-eyebrow {
+    display: inline-flex; align-items: center; gap: 0.75rem;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--amber);
+    margin-bottom: 2rem;
+    opacity: 0; animation: fadeSlideUp 0.8s 0.3s ease-out forwards;
+  }
+  .hero-eyebrow::before {
+    content: '';
+    width: 40px; height: 1px;
+    background: var(--amber);
+  }
+  .hero h1 {
+    font-family: var(--font-display-en), var(--font-display-zh);
+    font-weight: 900;
+    font-size: clamp(2.8rem, 6vw, 5rem);
+    line-height: 1.1;
+    margin-bottom: 1.5rem;
+    opacity: 0; animation: fadeSlideUp 0.8s 0.5s ease-out forwards;
+  }
+  .hero h1 .highlight {
+    background: linear-gradient(135deg, var(--amber), var(--amber-deep));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .hero-sub {
+    font-size: 1.15rem;
+    color: var(--text-muted);
+    max-width: 520px;
+    margin-bottom: 3rem;
+    opacity: 0; animation: fadeSlideUp 0.8s 0.7s ease-out forwards;
+  }
+  .hero-cta-group {
+    display: flex; gap: 1rem; flex-wrap: wrap;
+    opacity: 0; animation: fadeSlideUp 0.8s 0.9s ease-out forwards;
+  }
+  .btn-primary {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    padding: 0.9rem 2rem;
+    background: linear-gradient(135deg, var(--amber), var(--amber-deep));
+    color: var(--charcoal);
+    font-weight: 600; font-size: 0.9rem;
+    text-decoration: none;
+    border-radius: 6px;
+    transition: transform 0.3s, box-shadow 0.3s;
+    letter-spacing: 0.02em;
+  }
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px rgba(232, 168, 56, 0.3);
+  }
+  .btn-secondary {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    padding: 0.9rem 2rem;
+    background: transparent;
+    color: var(--text-light);
+    font-weight: 400; font-size: 0.9rem;
+    text-decoration: none;
+    border: 1px solid rgba(255, 248, 240, 0.15);
+    border-radius: 6px;
+    transition: border-color 0.3s, background 0.3s;
+  }
+  .btn-secondary:hover {
+    border-color: var(--amber);
+    background: rgba(232, 168, 56, 0.05);
+  }
+  .hero-visual {
+    position: absolute;
+    right: 4rem; top: 50%; transform: translateY(-50%);
+    width: 420px; height: 420px;
+    z-index: 1;
+  }
+  .hero-orbit {
+    position: absolute; inset: 0;
+    border: 1px solid rgba(232, 168, 56, 0.1);
+    border-radius: 50%;
+    animation: orbitSpin 30s linear infinite;
+  }
+  .hero-orbit:nth-child(2) {
+    inset: 40px;
+    animation-duration: 25s;
+    animation-direction: reverse;
+    border-color: rgba(46, 196, 182, 0.08);
+  }
+  .hero-orbit:nth-child(3) {
+    inset: 80px;
+    animation-duration: 20s;
+    border-color: rgba(212, 118, 60, 0.06);
+  }
+  .orbit-dot {
+    position: absolute; top: -5px; left: 50%;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--amber);
+    box-shadow: 0 0 20px rgba(232, 168, 56, 0.5);
+  }
+  .hero-orbit:nth-child(2) .orbit-dot {
+    background: var(--teal);
+    box-shadow: 0 0 20px rgba(46, 196, 182, 0.5);
+  }
+  @keyframes orbitSpin { to { transform: rotate(360deg); } }
+
+  /* — Sections common — */
+  section { position: relative; }
+  .section-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 8rem 4rem;
+  }
+  .section-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.25em;
+    color: var(--amber);
+    margin-bottom: 1rem;
+    display: inline-flex; align-items: center; gap: 0.75rem;
+  }
+  .section-label::before {
+    content: '';
+    width: 24px; height: 1px;
+    background: var(--amber);
+  }
+  .section-title {
+    font-family: var(--font-display-en), var(--font-display-zh);
+    font-weight: 700;
+    font-size: clamp(2rem, 4vw, 3rem);
+    line-height: 1.2;
+    margin-bottom: 1rem;
+  }
+  .section-desc {
+    color: var(--text-muted);
+    max-width: 560px;
+    font-size: 1rem;
+  }
+
+  /* — How it works — */
+  .how-it-works { background: var(--charcoal-light); }
+  .how-it-works .section-inner { position: relative; }
+  .steps-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 2rem;
+    margin-top: 4rem;
+  }
+  .step-card {
+    position: relative;
+    padding: 2.5rem 2rem;
+    background: rgba(255, 248, 240, 0.02);
+    border: 1px solid rgba(255, 248, 240, 0.05);
+    border-radius: 12px;
+    transition: border-color 0.4s, background 0.4s, transform 0.4s;
+    opacity: 0; transform: translateY(30px);
+  }
+  .step-card.visible {
+    opacity: 1; transform: translateY(0);
+    transition: opacity 0.6s ease-out, transform 0.6s ease-out, border-color 0.4s, background 0.4s;
+  }
+  .step-card:hover {
+    border-color: rgba(232, 168, 56, 0.2);
+    background: rgba(232, 168, 56, 0.03);
+    transform: translateY(-4px);
+  }
+  .step-number {
+    font-family: var(--font-display-en);
+    font-size: 3.5rem;
+    font-weight: 900;
+    background: linear-gradient(135deg, rgba(232, 168, 56, 0.3), rgba(232, 168, 56, 0.05));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1;
+    margin-bottom: 1.5rem;
+  }
+  .step-card h3 {
+    font-family: var(--font-display-zh);
+    font-weight: 700;
+    font-size: 1.1rem;
+    margin-bottom: 0.3rem;
+    color: var(--cream);
+  }
+  .step-card h3-en {
+    font-family: var(--font-display-en);
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 0.75rem;
+    font-style: italic;
+  }
+  .step-card p {
+    font-size: 0.88rem;
+    color: var(--text-muted);
+    line-height: 1.65;
+  }
+
+  /* — Features — */
+  .features { background: var(--charcoal); }
+  .features-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3rem;
+    margin-top: 4rem;
+  }
+  .feature-card {
+    padding: 3rem;
+    border-radius: 16px;
+    border: 1px solid rgba(255, 248, 240, 0.04);
+    position: relative;
+    overflow: hidden;
+    opacity: 0; transform: translateY(30px);
+  }
+  .feature-card.visible {
+    opacity: 1; transform: translateY(0);
+    transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+  }
+  .feature-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0;
+    width: 100%; height: 100%;
+    opacity: 0;
+    transition: opacity 0.4s;
+  }
+  .feature-card:nth-child(1)::before { background: radial-gradient(circle at 0% 0%, rgba(232, 168, 56, 0.06), transparent 60%); }
+  .feature-card:nth-child(2)::before { background: radial-gradient(circle at 100% 0%, rgba(46, 196, 182, 0.06), transparent 60%); }
+  .feature-card:nth-child(3)::before { background: radial-gradient(circle at 0% 100%, rgba(212, 118, 60, 0.06), transparent 60%); }
+  .feature-card:nth-child(4)::before { background: radial-gradient(circle at 100% 100%, rgba(232, 168, 56, 0.06), transparent 60%); }
+  .feature-card:hover::before { opacity: 1; }
+  .feature-icon {
+    width: 48px; height: 48px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 1.5rem;
+    font-size: 1.4rem;
+  }
+  .feature-card:nth-child(1) .feature-icon { background: rgba(232, 168, 56, 0.1); color: var(--amber); }
+  .feature-card:nth-child(2) .feature-icon { background: rgba(46, 196, 182, 0.1); color: var(--teal); }
+  .feature-card:nth-child(3) .feature-icon { background: rgba(212, 118, 60, 0.1); color: var(--amber-deep); }
+  .feature-card:nth-child(4) .feature-icon { background: rgba(46, 196, 182, 0.1); color: var(--teal); }
+  .feature-card h3 {
+    font-family: var(--font-display-zh);
+    font-weight: 700;
+    font-size: 1.15rem;
+    margin-bottom: 0.3rem;
+    position: relative;
+  }
+  .feature-card h3-en {
+    font-family: var(--font-display-en);
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin-bottom: 0.75rem;
+    font-style: italic;
+    position: relative;
+  }
+  .feature-card p {
+    color: var(--text-muted);
+    font-size: 0.88rem;
+    position: relative;
+    line-height: 1.65;
+  }
+
+  /* — Quote / Philosophy — */
+  .philosophy {
+    background: var(--charcoal-light);
+    overflow: hidden;
+  }
+  .philosophy-inner {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 8rem 4rem;
+    text-align: center;
+    position: relative;
+  }
+  .philosophy-quote {
+    font-family: var(--font-display-zh);
+    font-size: clamp(1.5rem, 3vw, 2.2rem);
+    font-weight: 400;
+    line-height: 1.6;
+    color: var(--cream);
+    margin-bottom: 2rem;
+    opacity: 0; transform: translateY(20px);
+  }
+  .philosophy-quote.visible {
+    opacity: 1; transform: translateY(0);
+    transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+  }
+  .philosophy-quote-en {
+    font-family: var(--font-display-en);
+    font-style: italic;
+    font-size: clamp(1rem, 1.8vw, 1.3rem);
+    color: var(--text-muted);
+    line-height: 1.6;
+    opacity: 0;
+  }
+  .philosophy-quote-en.visible {
+    opacity: 1;
+    transition: opacity 0.8s 0.3s ease-out;
+  }
+  .philosophy-divider {
+    width: 60px; height: 2px;
+    background: var(--amber);
+    margin: 2.5rem auto;
+    opacity: 0;
+  }
+  .philosophy-divider.visible {
+    opacity: 1;
+    transition: opacity 0.8s 0.15s ease-out;
+  }
+
+  /* — CTA — */
+  .cta-section {
+    background: var(--charcoal);
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .cta-section::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse 50% 60% at 50% 100%, rgba(232, 168, 56, 0.08), transparent 60%);
+  }
+  .cta-inner {
+    position: relative; z-index: 1;
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 6rem 4rem;
+  }
+  .cta-inner h2 {
+    font-family: var(--font-display-en), var(--font-display-zh);
+    font-size: clamp(1.8rem, 3.5vw, 2.5rem);
+    font-weight: 700;
+    margin-bottom: 1rem;
+  }
+  .cta-inner p {
+    color: var(--text-muted);
+    margin-bottom: 2.5rem;
+    font-size: 1rem;
+  }
+
+  /* — Footer — */
+  footer {
+    padding: 3rem 4rem;
+    border-top: 1px solid rgba(255, 248, 240, 0.05);
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+
+  /* — Animations — */
+  @keyframes fadeSlideUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* — Scroll reveal — */
+  .reveal {
+    opacity: 0; transform: translateY(30px);
+  }
+  .reveal.visible {
+    opacity: 1; transform: translateY(0);
+    transition: opacity 0.7s ease-out, transform 0.7s ease-out;
+  }
+
+  /* — Responsive — */
+  @media (max-width: 1024px) {
+    .hero-visual { display: none; }
+    nav { padding: 1.2rem 2rem; }
+    .section-inner { padding: 5rem 2rem; }
+    .steps-grid { grid-template-columns: repeat(2, 1fr); }
+    .features-grid { grid-template-columns: 1fr; }
+    .philosophy-inner { padding: 5rem 2rem; }
+    footer { padding: 2rem; flex-direction: column; gap: 1rem; }
+  }
+  @media (max-width: 640px) {
+    .steps-grid { grid-template-columns: 1fr; }
+    nav { padding: 1rem 1.5rem; }
+    .nav-links { display: none; }
+    .hero { padding: 6rem 1.5rem 4rem; }
+    .section-inner { padding: 4rem 1.5rem; }
+    .cta-inner { padding: 4rem 1.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Navigation -->
+<nav>
+  <div class="nav-logo">Personal<span>Teachers</span></div>
+  <ul class="nav-links">
+    <li><a href="#how">How</a></li>
+    <li><a href="#features">Features</a></li>
+    <li><a href="#philosophy">About</a></li>
+    <li><a href="#cta">Start</a></li>
+  </ul>
+</nav>
+
+<!-- Hero -->
+<section class="hero" id="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-grid"></div>
+  <div class="knowledge-node" style="width:300px;height:300px;background:rgba(232,168,56,0.08);top:15%;left:60%;animation:nodeAppear 1.2s ease-out forwards, nodeDrift 18s ease-in-out 1.2s infinite;"></div>
+  <div class="knowledge-node" style="width:200px;height:200px;background:rgba(46,196,182,0.06);top:60%;left:30%;animation:nodeAppear 1.2s 0.3s ease-out forwards, nodeDrift 22s ease-in-out 1.5s infinite;"></div>
+  <div class="knowledge-node" style="width:250px;height:250px;background:rgba(212,118,60,0.06);top:40%;left:75%;animation:nodeAppear 1.2s 0.6s ease-out forwards, nodeDrift 16s ease-in-out 1.8s infinite;"></div>
+
+  <div class="hero-content">
+    <div class="hero-eyebrow">AI-Powered Education</div>
+    <h1>
+      Build Your Own<br>
+      <span class="highlight">AI Teacher</span>
+    </h1>
+    <p class="hero-sub">
+      Upload your learning materials. Create a personalized AI tutor that truly understands your knowledge and guides your learning path.
+    </p>
+    <p class="hero-sub" style="font-family: var(--font-body-zh); margin-top: -1.5rem; font-size: 0.95rem;">
+      上传你的学习资料，创建真正理解你知识的 AI 导师，为你规划个性化学习路径。
+    </p>
+    <div class="hero-cta-group">
+      <a href="#cta" class="btn-primary">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        Get Started
+      </a>
+      <a href="#how" class="btn-secondary">Learn More</a>
+    </div>
+  </div>
+
+  <div class="hero-visual">
+    <div class="hero-orbit"><div class="orbit-dot"></div></div>
+    <div class="hero-orbit"><div class="orbit-dot"></div></div>
+    <div class="hero-orbit"></div>
+  </div>
+</section>
+
+<!-- How It Works -->
+<section class="how-it-works" id="how">
+  <div class="section-inner">
+    <div class="reveal">
+      <div class="section-label">Workflow</div>
+      <h2 class="section-title">How It Works</h2>
+      <p class="section-desc" style="font-family: var(--font-body-zh);">四步开始你的个性化学习之旅</p>
+    </div>
+    <div class="steps-grid">
+      <div class="step-card" style="transition-delay: 0.1s">
+        <div class="step-number">01</div>
+        <h3>上传知识库</h3>
+        <div class="h3-en">Upload Knowledge Base</div>
+        <p>导入你的 PDF 笔记、课程讲义、视频字幕等任何学习资料，构建专属知识底座。</p>
+      </div>
+      <div class="step-card" style="transition-delay: 0.2s">
+        <div class="step-number">02</div>
+        <h3>AI 导师生成</h3>
+        <div class="h3-en">AI Teacher Creation</div>
+        <p>基于你的资料自动生成个性化 AI 教师，它理解你的知识盲区和学习风格。</p>
+      </div>
+      <div class="step-card" style="transition-delay: 0.3s">
+        <div class="step-number">03</div>
+        <h3>对话式学习</h3>
+        <div class="h3-en">Conversational Learning</div>
+        <p>像和真人老师交流一样提问、讨论、获得解释。AI 根据你的理解动态调整教学策略。</p>
+      </div>
+      <div class="step-card" style="transition-delay: 0.4s">
+        <div class="step-number">04</div>
+        <h3>成长追踪</h3>
+        <div class="h3-en">Growth Tracking</div>
+        <p>可视化学习进度与知识掌握度，系统自动推荐下一步学习内容，让进步清晰可见。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Features -->
+<section class="features" id="features">
+  <div class="section-inner">
+    <div class="reveal">
+      <div class="section-label">Core Features</div>
+      <h2 class="section-title">Everything You Need</h2>
+      <p class="section-desc" style="font-family: var(--font-body-zh);">不只是一个聊天机器人，是你的私人学习系统</p>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card" style="transition-delay: 0.1s">
+        <div class="feature-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><path d="M8 7h8M8 11h6"/></svg>
+        </div>
+        <h3>知识库上传</h3>
+        <div class="h3-en">Knowledge Upload</div>
+        <p>支持 PDF、Markdown、文本、视频字幕等多种格式。你的资料越丰富，AI 教师越懂你。端到端加密，隐私安全。</p>
+      </div>
+      <div class="feature-card" style="transition-delay: 0.2s">
+        <div class="feature-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        </div>
+        <h3>智能对话教学</h3>
+        <div class="h3-en">Smart Dialogue Teaching</div>
+        <p>不是死板的问答，而是苏格拉底式的启发对话。AI 会追问、举例、类比，帮你建立真正的理解。</p>
+      </div>
+      <div class="feature-card" style="transition-delay: 0.3s">
+        <div class="feature-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        </div>
+        <h3>自适应学习路径</h3>
+        <div class="h3-en">Adaptive Learning Path</div>
+        <p>根据你的掌握程度动态调整难度和进度。已会的跳过，薄弱环节重点强化，不浪费一分钟。</p>
+      </div>
+      <div class="feature-card" style="transition-delay: 0.4s">
+        <div class="feature-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
+        </div>
+        <h3>学习进度可视化</h3>
+        <div class="h3-en">Progress Visualization</div>
+        <p>清晰的知识图谱与学习报告。每天学了多少、掌握了什么、下一步该学什么，一目了然。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Philosophy -->
+<section class="philosophy" id="philosophy">
+  <div class="philosophy-inner">
+    <div class="philosophy-quote">
+      真正的学习不是填鸭式的灌输，而是点燃好奇心的火焰。<br>
+      PersonalTeachers 让每个人都拥有自己的引路人。
+    </div>
+    <div class="philosophy-divider"></div>
+    <div class="philosophy-quote-en">
+      "True learning is not about filling a vessel — it's about igniting a flame.<br>
+      PersonalTeachers gives everyone their own guide on the journey."
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section" id="cta">
+  <div class="cta-inner">
+    <h2>Ready to Learn <span style="color: var(--amber);">Smarter</span>?</h2>
+    <p style="font-family: var(--font-body-zh);">准备好开始更聪明的学习了吗？</p>
+    <a href="#" class="btn-primary" style="font-size: 1rem; padding: 1rem 2.5rem;">
+      Start Learning Now
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+    </a>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <div class="nav-logo" style="font-size: 0.9rem;">Personal<span>Teachers</span></div>
+  <div>&copy; 2026 PersonalTeachers. Built with passion for learning.</div>
+</footer>
+
+<script>
+  // Scroll reveal with IntersectionObserver
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+
+  document.querySelectorAll('.step-card, .feature-card, .reveal, .philosophy-quote, .philosophy-divider, .philosophy-quote-en').forEach(el => {
+    observer.observe(el);
+  });
+
+  // Smooth scroll for nav links
+  document.querySelectorAll('a[href^="#"]').forEach(a => {
+    a.addEventListener('click', e => {
+      e.preventDefault();
+      const target = document.querySelector(a.getAttribute('href'));
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+</script>
+</body>
+</html>
