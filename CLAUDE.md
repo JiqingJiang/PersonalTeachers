@@ -12,6 +12,7 @@ PersonalTeachers v2 — AI 导师语录推送系统。通过多位历史/现代/
 ```bash
 cd backend
 python run.py              # 启动开发服务器 (uvicorn, port 8000, hot reload)
+python worker.py           # 启动 RQ Worker（推送任务消费者）
 pip install -r requirements.txt  # 安装依赖
 ```
 
@@ -45,15 +46,16 @@ backend/app/
 ├── models/       # SQLAlchemy 异步模型（User, Mentor, Keyword, AIModel, EmailPool, Quote）
 ├── core/         # 核心引擎：QuoteEngine, MentorPool, KeywordScheduler, QualityValidator
 ├── ai/           # LLM 抽象层：base.py(ABC) → openai_adapter.py → FallbackChain
-├── services/     # 业务服务：PushScheduler, EmailService, QuoteGenerator, SeedData
+├── services/     # 业务服务：PushScheduler, PushQueue, PushWorker, EmailService, SeedData
 ├── config.py     # Pydantic Settings，从 .env 加载配置
-└── main.py       # FastAPI 应用工厂，lifespan 中初始化 DB + 种子数据 + 调度器
+├── main.py       # FastAPI 应用工厂，lifespan 中初始化 DB + 种子数据 + 调度器
+└── worker.py     # RQ Worker 独立进程入口
 ```
 
 - **AI 集成**：`LLMProvider` 抽象基类 → `OpenAICompatibleProvider`（适配所有 OpenAI 兼容 API）→ `FallbackChain`（多模型优先级降级）
 - **语录生成流水线**：选关键词（按权重）→ 匹配导师（去重）→ 构建个性化 Prompt → AI 生成（fallback chain）→ 质量校验 → 邮件推送
 - **数据库**：aiosqlite 异步 SQLite，`lifespan` 启动时自动建表和填充种子数据
-- **定时推送**：APScheduler，时间槽分桶，邮箱池轮换，每日限额
+- **定时推送**：APScheduler 时间槽分桶 → Redis Queue 入队 → RQ Worker 消费执行，邮箱池轮换，失败指数退避重试
 
 ### Frontend 架构
 
@@ -80,6 +82,7 @@ Admin 端结构与 frontend 对称，base path 为 `/admin/`，使用独立 `adm
 |----|------|
 | 前端 | Vue 3 Composition API (`<script setup>`) + TypeScript + Vite + Tailwind CSS v4 + Pinia + Vue Router + Axios |
 | 后端 | FastAPI + Uvicorn + SQLAlchemy 2.0 (async) + aiosqlite + Pydantic v2 |
+| 任务队列 | Redis + RQ（推送任务持久化，崩溃恢复，失败重试） |
 | AI | OpenAI SDK（兼容 DeepSeek/智谱 GLM/Gemini/MiniMax） |
 | 认证 | JWT (python-jose + passlib)，localStorage 存储，axios 拦截器自动刷新 |
 | 定时任务 | APScheduler |
@@ -88,7 +91,7 @@ Admin 端结构与 frontend 对称，base path 为 `/admin/`，使用独立 `adm
 
 ## Key Design Patterns
 
-- **环境配置**：所有可变配置通过 `backend/.env` 管理（SMTP、JWT secret、admin 凭证等），`config.py` 用 Pydantic Settings 加载
+- **环境配置**：所有可变配置通过 `backend/.env` 管理（SMTP、JWT secret、admin 凭证、Redis URL 等），`config.py` 用 Pydantic Settings 加载
 - **种子数据**：`services/seed.py` 启动时初始化 60 个系统关键词（四象限）和预设导师，数据库迁移通过 `init_db()` 处理
 - **双 Prompt 模板**：普通导师和 future_self 导师使用不同的 prompt 策略
 - **个人化权重**：用户对关键词和导师各有独立权重，影响生成内容和推送频率
