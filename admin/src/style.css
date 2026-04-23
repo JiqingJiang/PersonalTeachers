@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+@theme {
+  /* Brand */
+  --color-brand: #E8A838;
+  --color-brand-dark: #D4763C;
+  --color-brand-light: #FDECC8;
+  --color-brand-50: #FFF9EB;
+  --color-brand-100: #FDECC8;
+  --color-brand-200: #FBD78F;
+  --color-brand-600: #D97706;
+  --color-brand-700: #B45309;
+
+  /* Surfaces */
+  --color-surface: #FDF8F0;
+  --color-surface-card: #FFFFFF;
+  --color-sidebar: #1A1A2E;
+  --color-sidebar-light: #252540;
+  --color-sidebar-hover: #2D2D4A;
+
+  /* Ink */
+  --color-ink: #2A2A3E;
+  --color-ink-secondary: #4A4A5E;
+  --color-ink-muted: #8B8BA0;
+  --color-ink-light: #B0B0C0;
+  --color-ink-on-dark: #F0EBE3;
+  --color-ink-on-dark-muted: #7A7A92;
+
+  /* Semantic */
+  --color-success: #059669;
+  --color-success-bg: #ECFDF5;
+  --color-danger: #DC2626;
+  --color-danger-bg: #FEF2F2;
+  --color-info: #2EC4B6;
+
+  /* Shadows */
+  --shadow-card: 0 1px 3px rgba(42, 42, 62, 0.06), 0 1px 2px rgba(42, 42, 62, 0.04);
+  --shadow-card-hover: 0 4px 12px rgba(42, 42, 62, 0.08), 0 2px 4px rgba(42, 42, 62, 0.04);
+  --shadow-elevated: 0 8px 30px rgba(42, 42, 62, 0.1), 0 4px 8px rgba(42, 42, 62, 0.06);
+  --shadow-amber: 0 4px 14px rgba(232, 168, 56, 0.25);
+
+  /* Fonts */
+  --font-display: "Crimson Pro", "Noto Serif SC", serif;
+  --font-body: "DM Sans", "Noto Sans SC", sans-serif;
+
+  /* Border radius */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.875rem;
+  --radius-xl: 1rem;
+}
+
+body {
+  font-family: var(--font-body);
+  color: var(--color-ink);
+  background-color: var(--color-surface);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-ink-light); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-ink-muted); }
+
+*:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+::selection {
+  background-color: var(--color-brand-100);
+  color: var(--color-ink);
+}
+
+input, select, textarea {
+  font-family: var(--font-body);
+}
