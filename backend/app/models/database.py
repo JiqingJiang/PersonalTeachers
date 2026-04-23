@@ -30,6 +30,7 @@ async def init_db():
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await conn.execute(text("PRAGMA journal_mode=WAL"))
 
     # 增量迁移：为已有表添加新列
     await _migrate_add_columns(async_session)
