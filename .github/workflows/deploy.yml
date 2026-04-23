@@ -69,10 +69,108 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
+            set -e
             cd ${{ secrets.SERVER_PATH }}/backend
             source venv/bin/activate
-            pip install -r requirements.txt
+            pip install -q -r requirements.txt
+
+            # --- Redis 首次安装（已安装则跳过）---
+            if ! command -v redis-server &>/dev/null; then
+              echo ">>> 首次部署：安装 Redis..."
+              if command -v yum &>/dev/null; then
+                sudo yum install -y redis
+              elif command -v apt-get &>/dev/null; then
+                sudo apt-get update -qq && sudo apt-get install -y -qq redis-server
+              fi
+            fi
+
+            # --- 配置 Redis（密码 + 2G 优化 + AOF 持久化）---
+            REDIS_PINGABLE=false
+            redis-cli ping 2>/dev/null | grep -q PONG && REDIS_PINGABLE=true
+            redis-cli -a "${{ secrets.REDIS_PASSWORD }}" ping 2>/dev/null | grep -q PONG && REDIS_PINGABLE=true
+
+            if [ "$REDIS_PINGABLE" = "true" ]; then
+              echo ">>> Redis 已运行"
+            else
+              REDIS_CONF=""
+              [ -f /etc/redis.conf ] && REDIS_CONF="/etc/redis.conf"
+              [ -f /etc/redis/redis.conf ] && REDIS_CONF="/etc/redis/redis.conf"
+
+              if [ -n "$REDIS_CONF" ]; then
+                echo ">>> 配置 Redis（2G 优化 + AOF 持久化）..."
+                sudo cp "$REDIS_CONF" "${REDIS_CONF}.bak"
+                sudo tee "$REDIS_CONF" > /dev/null <<RCONF
+            bind 127.0.0.1
+            port 6379
+            requirepass ${{ secrets.REDIS_PASSWORD }}
+            daemonize yes
+            pidfile /var/run/redis/redis-server.pid
+            logfile /var/log/redis/redis.log
+            dir /var/lib/redis
+            maxmemory 128mb
+            maxmemory-policy allkeys-lru
+            appendonly yes
+            appendfsync everysec
+            timeout 300
+            tcp-keepalive 60
+            RCONF
+                sudo mkdir -p /var/run/redis /var/log/redis /var/lib/redis
+                sudo chown -R redis:redis /var/run/redis /var/log/redis /var/lib/redis
+                sudo systemctl enable redis 2>/dev/null || true
+                sudo systemctl restart redis 2>/dev/null || true
+              fi
+            fi
+
+            # --- 写入 REDIS_URL 到 .env（不存在则新增）---
+            REDIS_URL_LINE="REDIS_URL=redis://:${{ secrets.REDIS_PASSWORD }}@localhost:6379/0"
+            if grep -q "^REDIS_URL=" .env 2>/dev/null; then
+              sed -i "s|^REDIS_URL=.*|$REDIS_URL_LINE|" .env
+            else
+              echo "$REDIS_URL_LINE" >> .env
+            fi
+            echo ">>> .env REDIS_URL 已配置"
+
+            # --- RQ Worker systemd service（不存在则创建）---
+            SERVICE_FILE="/etc/systemd/system/personalteachers2-worker.service"
+            if [ ! -f "$SERVICE_FILE" ]; then
+              echo ">>> 创建 RQ Worker systemd service..."
+              APP_DIR=$(pwd)
+              sudo tee "$SERVICE_FILE" > /dev/null <<SVC
+            [Unit]
+            Description=PersonalTeachers RQ Worker
+            After=network.target personalteachers2.service redis.service
+
+            [Service]
+            Type=simple
+            User=${{ secrets.SERVER_USER }}
+            WorkingDirectory=$APP_DIR
+            ExecStart=$APP_DIR/venv/bin/python worker.py
+            Restart=always
+            RestartSec=5
+
+            [Install]
+            WantedBy=multi-user.target
+            SVC
+              sudo systemctl daemon-reload
+              sudo systemctl enable personalteachers2-worker
+            fi
+
+            # --- 重启服务 ---
+            echo ">>> 重启 API 服务..."
             sudo systemctl restart personalteachers2
+
+            echo ">>> 重启 Worker 服务..."
+            sudo systemctl restart personalteachers2-worker
+
+            # --- 健康检查 ---
             sleep 3
             curl -sf http://127.0.0.1:8000/api/v1/health || (echo "Health check failed!" && exit 1)
+
+            # --- 验证 Worker 运行 ---
+            if sudo systemctl is-active --quiet personalteachers2-worker; then
+              echo ">>> Worker 运行正常"
+            else
+              echo "警告: Worker 服务未运行，请检查 systemd 日志"
+            fi
+
             echo "Deploy successful!"
