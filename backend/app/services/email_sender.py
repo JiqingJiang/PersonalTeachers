@@ -5,6 +5,7 @@
 """
 
 import asyncio
+import random
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -23,8 +24,12 @@ async def send_email(
     smtp_username: str | None = None,
     smtp_password: str | None = None,
     max_retries: int = 3,
-) -> bool:
-    """发送单封邮件（验证码等场景，使用 .env 配置的 SMTP）"""
+) -> tuple[bool, str]:
+    """发送单封邮件（验证码等场景，使用 .env 配置的 SMTP）
+
+    Returns:
+        (是否成功, 错误信息，成功时为空字符串)
+    """
     settings = get_settings()
     host = smtp_host or settings.SMTP_HOST
     port = smtp_port or settings.SMTP_PORT
@@ -32,8 +37,9 @@ async def send_email(
     password = smtp_password or settings.SMTP_PASSWORD
 
     if not host or not username:
-        logger.warning("SMTP 未配置，跳过邮件发送")
-        return False
+        msg = "SMTP 未配置，跳过邮件发送"
+        logger.warning(msg)
+        return False, msg
 
     message = MIMEMultipart("alternative")
     message["From"] = username
@@ -41,6 +47,7 @@ async def send_email(
     message["Subject"] = subject
     message.attach(MIMEText(html_content, "html", "utf-8"))
 
+    last_error = ""
     for attempt in range(max_retries):
         try:
             if port == 465:
@@ -54,13 +61,14 @@ async def send_email(
                     username=username, password=password, start_tls=True,
                 )
             logger.info(f"邮件发送成功: {to}")
-            return True
+            return True, ""
         except Exception as e:
+            last_error = f"{type(e).__name__}: {e}"
             logger.warning(f"邮件发送失败 (尝试 {attempt + 1}/{max_retries}): {e}")
             if attempt < max_retries - 1:
                 await asyncio.sleep(2)
 
-    return False
+    return False, last_error
 
 
 async def send_verification_code_email(to: str, code: str) -> bool:
@@ -88,7 +96,8 @@ async def send_verification_code_email(to: str, code: str) -> bool:
     </td></tr>
     </table>
     """
-    return await send_email(to, "PersonalTeachers 验证码", html)
+    success, _ = await send_email(to, "PersonalTeachers 验证码", html)
+    return success
 
 
 class EmailSenderPool:
@@ -126,18 +135,22 @@ class EmailSenderPool:
         self._current_index += 1
         return sender
 
-    async def send_via_pool(self, to: str, subject: str, html_content: str) -> tuple[bool, str]:
+    async def send_via_pool(self, to: str, subject: str, html_content: str) -> tuple[bool, str, str]:
         """
         通过邮箱池发送邮件。
 
         Returns:
-            (是否成功, 使用的发件邮箱)
+            (是否成功, 使用的发件邮箱, 错误信息)
         """
         sender = self.get_next_sender()
         if not sender:
-            return False, ""
+            return False, "", "邮箱池无可用发件邮箱"
 
-        success = await send_email(
+        # 发送前随机延迟 1.5~4 秒，避免 SMTP 限流
+        delay = random.uniform(1.5, 4.0)
+        await asyncio.sleep(delay)
+
+        success, error = await send_email(
             to=to,
             subject=subject,
             html_content=html_content,
@@ -151,7 +164,7 @@ class EmailSenderPool:
         if success:
             sender["sent_today"] = sender.get("sent_today", 0) + 1
 
-        return success, sender["email"]
+        return success, sender["email"], error
 
 
 def _today_str() -> str:
