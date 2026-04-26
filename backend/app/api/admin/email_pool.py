@@ -139,7 +139,7 @@ async def test_email_sender(
         raise HTTPException(status_code=404, detail="邮箱不存在")
 
     from app.services.email_sender import send_email
-    success = await send_email(
+    success, _ = await send_email(
         to=admin.email,
         subject="PersonalTeachers 邮箱测试",
         html_content="<h2>邮箱测试成功</h2><p>该邮箱可以正常发送邮件。</p>",

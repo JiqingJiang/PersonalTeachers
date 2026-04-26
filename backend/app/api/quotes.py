@@ -197,7 +197,7 @@ async def test_email(
 
     # 发送
     from app.services.email_sender import send_email
-    success = await send_email(to=user.email, subject=subject, html_content=html)
+    success, _ = await send_email(to=user.email, subject=subject, html_content=html)
 
     if not success:
         raise HTTPException(status_code=500, detail="邮件发送失败，请检查邮箱配置")

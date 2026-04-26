@@ -21,7 +21,10 @@ async def push_for_user(
     engine: QuoteEngine,
     sender_pool: EmailSenderPool,
 ) -> bool:
-    """为单个用户执行推送流程：生成 → 保存 → 渲染 → 发送"""
+    """为单个用户执行推送流程：生成 → 保存 → 渲染 → 发送
+
+    所有失败场景都会写入 EmailSendLog 并附带 error_message。
+    """
     try:
         # 1. 获取用户可用的关键词
         result = await db.execute(
@@ -51,17 +54,13 @@ async def push_for_user(
         )
         all_prefs = result.scalars().all()
         if all_prefs:
-            # 用户有偏好记录：只取 is_enabled=True 的导师
             enabled_ids = {p.mentor_id for p in all_prefs if p.is_enabled}
             disabled_ids = {p.mentor_id for p in all_prefs if not p.is_enabled}
-            # 如果有禁用记录，用 enabled_ids 作为白名单（可以为空集）
             if disabled_ids:
                 user_mentor_ids = enabled_ids
             else:
-                # 全部都是启用的，等价于无过滤
                 user_mentor_ids = None
         else:
-            # 用户从未配置过，None 表示全部启用
             user_mentor_ids = None
 
         # 5. 获取活跃的 AI 模型配置
@@ -79,7 +78,9 @@ async def push_for_user(
         ]
 
         if not model_configs:
-            logger.error(f"用户 {user.email}: 没有可用的 AI 模型")
+            error_msg = "没有可用的 AI 模型配置，请在管理后台添加并启用至少一个模型"
+            logger.error(f"用户 {user.email}: {error_msg}")
+            await _log_failure(db, user, sender_pool, 0, error_msg)
             return False
 
         # 6. 获取近期语录内容用于去重（最近2天的）
@@ -114,7 +115,9 @@ async def push_for_user(
         )
 
         if not quotes:
-            logger.warning(f"用户 {user.email}: 未生成任何语录")
+            error_msg = "AI 模型未生成任何语录（可能因内容质量校验未通过或模型返回为空）"
+            logger.warning(f"用户 {user.email}: {error_msg}")
+            await _log_failure(db, user, sender_pool, 0, error_msg)
             return False
 
         # 8. 保存语录到数据库
@@ -135,7 +138,7 @@ async def push_for_user(
         subject = f"今日人生导师智慧 - {date_str}"
 
         # 10. 发送邮件
-        success, sender_email = await sender_pool.send_via_pool(
+        success, sender_email, error_message = await sender_pool.send_via_pool(
             to=user.email, subject=subject, html_content=html,
         )
 
@@ -147,12 +150,12 @@ async def push_for_user(
             subject=subject,
             quote_count=len(quotes),
             status="sent" if success else "failed",
+            error_message=error_message if not success else None,
         )
         db.add(log)
 
         if success:
             user.last_push_date = _today_str()
-            # 回写邮箱池计数到数据库
             await _update_sender_count(db, sender_email)
 
         await db.commit()
@@ -161,8 +164,13 @@ async def push_for_user(
         return success
 
     except Exception as e:
-        logger.error(f"用户 {user.email}: 推送异常 - {e}")
+        error_msg = f"{type(e).__name__}: {e}"
+        logger.error(f"用户 {user.email}: 推送异常 - {error_msg}")
         await db.rollback()
+        try:
+            await _log_failure(db, user, sender_pool, 0, error_msg)
+        except Exception:
+            logger.error(f"用户 {user.email}: 写入失败日志也异常")
         return False
 
 
@@ -173,6 +181,28 @@ def _orm_to_dict(obj) -> dict:
 
 def _today_str() -> str:
     return datetime.now().strftime("%Y-%m-%d")
+
+
+async def _log_failure(
+    db: AsyncSession,
+    user: User,
+    sender_pool: EmailSenderPool,
+    quote_count: int,
+    error_message: str,
+):
+    """将推送失败记录写入 EmailSendLog"""
+    sender = sender_pool.get_next_sender() if sender_pool else None
+    log = EmailSendLog(
+        user_id=user.id,
+        to_email=user.email,
+        sender_email=sender["email"] if sender else "",
+        subject="",
+        quote_count=quote_count,
+        status="failed",
+        error_message=error_message,
+    )
+    db.add(log)
+    await db.commit()
 
 
 async def _update_sender_count(db: AsyncSession, sender_email: str):
