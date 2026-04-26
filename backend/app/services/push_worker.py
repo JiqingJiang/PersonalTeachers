@@ -119,7 +119,7 @@ async def _execute_push_async(user_id: int) -> bool:
             subject = f"今日人生导师智慧 - {date_str}"
 
             sender_pool = await _load_sender_pool()
-            success, sender_email = await sender_pool.send_via_pool(
+            success, sender_email, error_message = await sender_pool.send_via_pool(
                 to=user.email, subject=subject, html_content=html,
             )
 
@@ -129,7 +129,7 @@ async def _execute_push_async(user_id: int) -> bool:
                 sender_email=sender_email or "", subject=subject,
                 quote_count=len(quotes),
                 status="sent" if success else "failed",
-                error_message=None if success else "邮件发送失败",
+                error_message=error_message if not success else None,
             )
             db.add(log)
 
