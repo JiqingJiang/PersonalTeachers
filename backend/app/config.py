@@ -19,6 +19,13 @@ class Settings(BaseSettings):
     # 数据库
     DATABASE_URL: str = "sqlite+aiosqlite:///./storage/personal_teachers.db"
 
+    # Redis
+    REDIS_URL: str = "redis://:your_redis_password@localhost:6379/0"
+
+    # 并发控制
+    LLM_CONCURRENCY: int = 15    # LLM 请求最大并发数（原硬编码 3）
+    PUSH_CONCURRENCY: int = 20   # 同时推送用户数上限（原硬编码 5）
+
     # 管理员（首次启动时自动创建）
     ADMIN_EMAIL: str = ""
     ADMIN_PASSWORD: str = ""

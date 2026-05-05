@@ -13,6 +13,7 @@
 - **AI 个性化生成** — 结合用户背景、偏好权重、关键词匹配，定制化语录
 - **多模型降级** — 支持 DeepSeek、智谱 GLM 等任意 OpenAI 兼容接口，自动故障切换
 - **定时邮件推送** — 时间槽分桶调度，多邮箱池轮换，智能限额
+- **可靠投递** — Redis 任务队列，崩溃自动恢复，失败指数退避重试
 - **完整管理后台** — 用户管理、AI 模型配置、邮箱池、推送监控
 
 ## 技术栈
@@ -23,6 +24,7 @@
 | 管理后台 | Vue 3 + TypeScript + Vite + Tailwind CSS + Pinia       |
 | 后端 API | FastAPI + Uvicorn + SQLAlchemy 2.0 (async) + aiosqlite |
 | AI 集成  | OpenAI 兼容接口（DeepSeek / 智谱 GLM / 自定义）        |
+| 任务队列 | Redis + RQ（推送任务持久化，崩溃恢复，失败重试）       |
 | 认证     | JWT (access token + refresh token)                     |
 | 定时任务 | APScheduler                                            |
 | 邮件     | aiosmtplib + 多邮箱池轮换                              |
@@ -34,6 +36,7 @@
 
 - Python 3.10+
 - Node.js 18+
+- Redis 6.0+（推送任务队列依赖）
 
 ### 1. 克隆项目
 
@@ -77,9 +80,16 @@ npm run dev      # http://localhost:5174
 
 ### 4. 启动
 
+需要启动两个进程：FastAPI 服务和 RQ Worker。
+
 ```bash
+# 终端 1：FastAPI 服务
 cd backend
 python run.py    # http://localhost:8000
+
+# 终端 2：RQ Worker（推送任务消费者）
+cd backend
+python worker.py
 ```
 
 前后端都启动后，访问 `http://localhost:5173` 即可使用。
@@ -97,6 +107,16 @@ python run.py    # http://localhost:8000
 主要配置项：
 
 ```bash
+# 数据库（默认 SQLite，开发环境无需修改）
+DATABASE_URL=sqlite+aiosqlite:///./storage/personal_teachers.db
+
+# Redis（推送任务队列，必须配置）
+REDIS_URL=redis://:your_redis_password@localhost:6379/0
+
+# 并发控制（可选，有默认值）
+LLM_CONCURRENCY=15     # LLM 请求最大并发数（默认 15）
+PUSH_CONCURRENCY=20    # 同时推送用户数上限（默认 20）
+
 # AI 模型（至少配置一个，也可在管理后台配置）
 DEEPSEEK_API_KEY=your-key
 ZHIPUAI_API_KEY=your-key

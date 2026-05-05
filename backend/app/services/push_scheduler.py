@@ -1,6 +1,7 @@
 """定时推送调度器
 
 按时间段分桶调度：不为每个用户创建任务，而是按 push_time 分桶。
+推送任务投递到 Redis Queue，由 RQ Worker 异步消费执行。
 """
 
 import asyncio
@@ -10,9 +11,6 @@ from sqlalchemy import select, and_
 
 from app.models import User, EmailPool, init_db
 from app.models import database as db_module
-from app.core.quote_engine import QuoteEngine
-from app.services.email_sender import EmailSenderPool
-from app.services.quote_service import push_for_user
 from app.services.cleanup import cleanup_expired_data
 
 
@@ -20,7 +18,6 @@ class PushScheduler:
     """推送调度器"""
 
     def __init__(self):
-        self._engine = QuoteEngine()
         self._scheduler = None
 
     def start(self):
@@ -50,7 +47,7 @@ class PushScheduler:
         )
 
         self._scheduler.start()
-        logger.info("推送调度器已启动")
+        logger.info("推送调度器已启动（队列模式）")
 
     def stop(self):
         if self._scheduler:
@@ -88,7 +85,7 @@ class PushScheduler:
                 hour, minute = pt.split(":")
                 job_id = f"push_slot_{hour}_{minute}"
                 self._scheduler.add_job(
-                    self._push_for_time_slot,
+                    self._enqueue_for_time_slot,
                     "cron",
                     hour=int(hour),
                     minute=int(minute),
@@ -101,15 +98,14 @@ class PushScheduler:
 
         logger.info(f"已注册 {len(push_times)} 个推送时间段")
 
-    async def _push_for_time_slot(self, push_time: str):
-        """执行某个时间段所有用户的推送"""
+    async def _enqueue_for_time_slot(self, push_time: str):
+        """将某个时间段需要推送的用户投递到 Redis Queue"""
         if db_module.async_session is None:
             await init_db()
 
-        logger.info(f"开始推送时间段: {push_time}")
+        logger.info(f"开始入队时间段: {push_time}")
 
         async with db_module.async_session() as db:
-            # 查询该时间段需要推送的用户
             today = datetime.now().strftime("%Y-%m-%d")
             result = await db.execute(
                 select(User).where(
@@ -127,59 +123,12 @@ class PushScheduler:
             logger.info(f"时间段 {push_time}: 无需推送的用户")
             return
 
-        # 加载邮箱池
-        sender_pool = await self._load_sender_pool()
-        if not sender_pool:
-            logger.error("邮箱池为空，无法推送")
-            return
+        from app.services.push_queue import enqueue_push
 
-        # 批量推送（并发控制）
-        semaphore = asyncio.Semaphore(5)
+        for user in users:
+            enqueue_push(user.id)
 
-        async def push_one(user):
-            async with semaphore:
-                async with db_module.async_session() as db:
-                    return await push_for_user(user, db, self._engine, sender_pool)
-
-        tasks = [push_one(user) for user in users]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-
-        success_count = sum(1 for r in results if r is True)
-        fail_count = sum(1 for r in results if r is False)
-        error_count = sum(1 for r in results if isinstance(r, Exception))
-
-        logger.info(
-            f"时间段 {push_time} 推送完成: "
-            f"成功 {success_count}, 失败 {fail_count}, 异常 {error_count}"
-        )
-
-    async def _load_sender_pool(self) -> EmailSenderPool | None:
-        """从数据库加载活跃的发件邮箱"""
-        if db_module.async_session is None:
-            return None
-
-        async with db_module.async_session() as db:
-            result = await db.execute(
-                select(EmailPool).where(EmailPool.is_active == True)
-            )
-            senders = [
-                {
-                    "email": s.email,
-                    "smtp_host": s.smtp_host,
-                    "smtp_port": s.smtp_port,
-                    "smtp_password": s.smtp_password,
-                    "display_name": s.display_name,
-                    "daily_limit": s.daily_limit,
-                    "sent_today": s.sent_today or 0,
-                    "last_sent_date": s.last_sent_date,
-                }
-                for s in result.scalars().all()
-            ]
-
-        if not senders:
-            return None
-
-        return EmailSenderPool(senders)
+        logger.info(f"时间段 {push_time}: 已入队 {len(users)} 个用户")
 
     async def _reset_email_pool(self):
         """重置邮箱池每日计数"""

@@ -9,6 +9,7 @@ from datetime import datetime
 from loguru import logger
 
 from app.ai.fallback_chain import FallbackChain
+from app.config import get_settings
 from app.core.keyword_scheduler import KeywordScheduler
 from app.core.mentor_pool import MentorPool
 from app.core.quality import validate_quality
@@ -173,7 +174,7 @@ class QuoteEngine:
         gen_context: dict,
     ) -> list[dict]:
         """批量生成语录"""
-        semaphore = asyncio.Semaphore(3)
+        semaphore = asyncio.Semaphore(get_settings().LLM_CONCURRENCY)
 
         async def generate_one(kw: dict, mentor: dict) -> dict | None:
             async with semaphore:
